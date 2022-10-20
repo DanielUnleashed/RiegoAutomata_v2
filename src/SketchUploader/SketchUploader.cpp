@@ -81,6 +81,8 @@ void SketchUploader::startServer(){
 
   timeClient.begin();
   timeClient.setTimeOffset(3600*2); // GMT+2 Horario de verano, GMT+1 Horario de invierno
+
+  log("Server ready!");
 }
 
 void SketchUploader::log(String str){

@@ -35,7 +35,11 @@ const char* ssid = "Aitina";
 const char* password = "270726VorGes_69*";
 
 uint32_t startLEDTime = 0;
+uint32_t startPressTime = 0;
+bool isPressed = false;
+bool lightsOn = false;
 #define LED_TIME 3*60*1000 // 3 mins in ms
+#define NORMAL_PRESENCE_TIME 500
   
 double measureUltrasoundDistance() {
   double distanceSum = 0;
@@ -80,6 +84,7 @@ void setup() {
   // Sketch Uploader
   SU.startServer();
 
+  pinMode(PRESENCE_PIN, INPUT);
   pinMode(LEDSTRIP_PIN, OUTPUT);
 
   pinMode(MOTOR_A_PWM, OUTPUT);
@@ -99,14 +104,31 @@ void setup() {
   ledcAttachPin(MOTOR_B_PWM, 2);
 
   pinMode(BUTTON, INPUT);
-  attachInterrupt(BUTTON, []{
-      startLEDTime = millis();
-  }, HIGH);
 }
 
 void loop() {
-  ledcWrite(0, ((millis() - startLEDTime) > LED_TIME)?255:0);
-  delay(100);
+  bool currentState = digitalRead(BUTTON);
+  if(currentState){
+    //SU.log("Motion detected");
+    if(!isPressed) startPressTime = millis();
+  }else{
+    //SU.log("Motion missed");
+    if(isPressed && (millis() - startPressTime)>NORMAL_PRESENCE_TIME){
+      lightsOn = true;
+      startLEDTime = millis();
+      //SU.log("Lights on");
+    }
+  }
+  isPressed = currentState;
+
+  if(lightsOn && (millis() - startLEDTime)<LED_TIME){
+    ledcWrite(0, 255);
+  }else{
+    ledcWrite(0, 0);
+    lightsOn = false;
+    //SU.log("Lights off");
+  }
+  delay(1000);
 }
 
 /*
