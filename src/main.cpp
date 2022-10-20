@@ -29,10 +29,13 @@
 #define PWM_FAST 200 // arbitrary fast speed PWM duty cycle
 #define DIR_DELAY 1000 // brief delay for abrupt motor changes
 
-#define BUTTON 34
+#define BUTTON 25
 
 const char* ssid = "Aitina";
 const char* password = "270726VorGes_69*";
+
+uint32_t startLEDTime = 0;
+#define LED_TIME 3*60*1000 // 3 mins in ms
   
 double measureUltrasoundDistance() {
   double distanceSum = 0;
@@ -95,22 +98,15 @@ void setup() {
   ledcSetup(2, 5000, 8);
   ledcAttachPin(MOTOR_B_PWM, 2);
 
-  ledcWrite(0,0);
-
-  Serial.println();
-
-  /*pinMode(34, INPUT);
-  attachInterrupt(34, []{
-    xTaskCreate([](void* params){
-      ledcWrite(0,255);
-      delay(5*60*1000); //Block for 5 minutes
-      ledcWrite(0,0);
-    }, "LED_timer", 4000, NULL, 1, NULL);
-  }, HIGH);*/
+  pinMode(BUTTON, INPUT);
+  attachInterrupt(BUTTON, []{
+      startLEDTime = millis();
+  }, HIGH);
 }
 
 void loop() {
-
+  ledcWrite(0, ((millis() - startLEDTime) > LED_TIME)?255:0);
+  delay(100);
 }
 
 /*
