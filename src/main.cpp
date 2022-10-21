@@ -1,5 +1,6 @@
 #include <Arduino.h>
 #include "SketchUploader/SketchUploader.h"
+#include "Input.h"
 
 // Ultrasound sensor (deposit)
 #define TRIGGER_PIN 32
@@ -25,6 +26,8 @@
 #define MOTOR_B_PWM MOTOR_B1
 #define MOTOR_B_DIR MOTOR_B2
 
+#define MOTOR_TIME 30*1000 
+
 #define PWM_SLOW 50  // arbitrary slow speed PWM duty cycle
 #define PWM_FAST 200 // arbitrary fast speed PWM duty cycle
 #define DIR_DELAY 1000 // brief delay for abrupt motor changes
@@ -34,12 +37,8 @@
 const char* ssid = "Aitina";
 const char* password = "270726VorGes_69*";
 
-uint32_t startLEDTime = 0;
-uint32_t startPressTime = 0;
-bool isPressed = false;
-bool lightsOn = false;
-#define LED_TIME 3*60*1000 // 3 mins in ms
-#define NORMAL_PRESENCE_TIME 500
+#define LED_TIME 5*1000
+
   
 double measureUltrasoundDistance() {
   double distanceSum = 0;
@@ -57,6 +56,25 @@ double measureUltrasoundDistance() {
     delay(1);
   }
   return distanceSum/ULTRASOUND_ITERATIONS;
+}
+
+bool motorsRunning = false;
+void bootUpMotors(){
+  for(int dutyCycle = 0; dutyCycle <= 255; dutyCycle++){   
+    ledcWrite(1, dutyCycle);
+    ledcWrite(2, dutyCycle);
+    delay(15);
+  }
+  motorsRunning = true;
+}
+
+void bootDownMotors(){
+  for(int dutyCycle = 255; dutyCycle >= 0; dutyCycle--){
+    ledcWrite(1, dutyCycle);
+    ledcWrite(2, dutyCycle); 
+    delay(15);
+  }
+  motorsRunning = false;
 }
 
 void setup() {
@@ -102,33 +120,41 @@ void setup() {
   ledcAttachPin(MOTOR_A_PWM, 1);
   ledcSetup(2, 5000, 8);
   ledcAttachPin(MOTOR_B_PWM, 2);
-
-  pinMode(BUTTON, INPUT);
 }
 
-void loop() {
-  bool currentState = digitalRead(BUTTON);
-  if(currentState){
-    //SU.log("Motion detected");
-    if(!isPressed) startPressTime = millis();
-  }else{
-    //SU.log("Motion missed");
-    if(isPressed && (millis() - startPressTime)>NORMAL_PRESENCE_TIME){
-      lightsOn = true;
-      startLEDTime = millis();
-      //SU.log("Lights on");
-    }
-  }
-  isPressed = currentState;
+Input presence(PRESENCE_PIN, LED_TIME, 2000);
+Input motorButton(BUTTON, MOTOR_TIME, 1000);
+bool lastPresenceState = false;
 
-  if(lightsOn && (millis() - startLEDTime)<LED_TIME){
+void loop() {
+  bool presenceState = presence.inputHigh();
+  if(presenceState){
+    if(!lastPresenceState) SU.log("Lights on");
     ledcWrite(0, 255);
   }else{
+    if(lastPresenceState) SU.log("Lights off");
     ledcWrite(0, 0);
-    lightsOn = false;
-    //SU.log("Lights off");
   }
-  delay(1000);
+  lastPresenceState = presenceState;
+
+  bool motorState = motorButton.inputHigh();
+  if(motorState){
+    if(!motorsRunning){
+      bootUpMotors();
+      SU.log("Motors on");
+    }
+    ledcWrite(1, 255);
+    ledcWrite(2, 255);
+  }else{
+    if(motorsRunning){
+      bootDownMotors();
+      SU.log("Motors off");
+    }
+    ledcWrite(1, 0);
+    ledcWrite(2, 0);
+  }
+
+  delay(50);
 }
 
 /*
