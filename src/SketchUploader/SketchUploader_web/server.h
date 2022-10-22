@@ -44,7 +44,7 @@ const char server_html[] PROGMEM = R"rawliteral(
         
         <div style='width: 100%'>
             <div style="display: table-cell; width: 20%">
-                <input type='checkbox' id='show_date'>
+                <input type='checkbox' id='show_date' checked>
                 <label for='show_date'>Show timestamps</label>
             </div>
 

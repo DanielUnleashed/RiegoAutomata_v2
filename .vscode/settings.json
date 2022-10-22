@@ -123,5 +123,10 @@
     "**/.vscode",
     "**/.vscode/**"
   ],
-  "cmake.configureOnOpen": true
+  "cmake.configureOnOpen": true,
+  "files.associations": {
+    "*.tcc": "cpp",
+    "optional": "cpp",
+    "limits": "cpp"
+  }
 }

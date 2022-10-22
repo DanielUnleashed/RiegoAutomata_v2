@@ -26,19 +26,14 @@
 #define MOTOR_B_PWM MOTOR_B1
 #define MOTOR_B_DIR MOTOR_B2
 
-#define MOTOR_TIME 30*1000 
-
-#define PWM_SLOW 50  // arbitrary slow speed PWM duty cycle
-#define PWM_FAST 200 // arbitrary fast speed PWM duty cycle
-#define DIR_DELAY 1000 // brief delay for abrupt motor changes
+#define MOTOR_TIME 30*1000
 
 #define BUTTON 25
 
 const char* ssid = "Aitina";
 const char* password = "270726VorGes_69*";
 
-#define LED_TIME 5*1000
-
+#define LED_TIME 20*1000
   
 double measureUltrasoundDistance() {
   double distanceSum = 0;
@@ -60,11 +55,13 @@ double measureUltrasoundDistance() {
 
 bool motorsRunning = false;
 void bootUpMotors(){
-  for(int dutyCycle = 0; dutyCycle <= 255; dutyCycle++){   
+  /*for(int dutyCycle = 0; dutyCycle <= 255; dutyCycle++){   
     ledcWrite(1, dutyCycle);
     ledcWrite(2, dutyCycle);
     delay(15);
-  }
+  }*/
+  ledcWrite(1, 255);
+  ledcWrite(2, 255);
   motorsRunning = true;
 }
 
@@ -122,8 +119,8 @@ void setup() {
   ledcAttachPin(MOTOR_B_PWM, 2);
 }
 
-Input presence(PRESENCE_PIN, LED_TIME, 2000);
-Input motorButton(BUTTON, MOTOR_TIME, 1000);
+Input presence(PRESENCE_PIN, LED_TIME, false, 8000);
+Input motorButton(BUTTON, MOTOR_TIME, true, 500);
 bool lastPresenceState = false;
 
 void loop() {

@@ -44,7 +44,9 @@ void SketchUploader::startServer(){
     ESP.restart();
   }, [](AsyncWebServerRequest *request, String filename, size_t index, uint8_t *data, size_t len, bool final) {
     if (!index) {
-      Serial.printf("Uploading: %s\n", filename.c_str());
+      String message = "Uploading: "+ filename + "\n";
+      SU.log(message);
+      Serial.print(message);
       if (!Update.begin(UPDATE_SIZE_UNKNOWN)) { //start with max available size
         Update.printError(Serial);
       }
@@ -60,6 +62,7 @@ void SketchUploader::startServer(){
     if (final) {
       if (Update.end(true)) { //true to set the size to the current progress
         Serial.printf("Update Success: %u bytes\nRebooting...\n", index+len);
+        SU.log("Update Success!");
       } else {
         Update.printError(Serial);
       }
@@ -86,7 +89,12 @@ void SketchUploader::startServer(){
 }
 
 void SketchUploader::log(String str){
+  static uint32_t lastTimeLog = 0;
   uint32_t startTime = millis();
+
+  // Wait for 500 ms between messages
+  if((startTime-lastTimeLog) < 250) return;
+
   while(!timeClient.update() && (millis()-startTime)<2000){
     timeClient.forceUpdate();
   }
@@ -108,7 +116,11 @@ void SketchUploader::log(String str){
   }
   String message = date + " " + timeStamp + " > " + str;
   lastLogs[logPointer++] = message;
-  events.send(message.c_str(), "console", millis());
+  events.send(message.c_str(), "console", startTime);
+
+  Serial.println(str);
+
+  lastTimeLog = startTime;
 }
 
 void SketchUploader::retrieveLastLogs(){
