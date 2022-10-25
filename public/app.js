@@ -54,8 +54,8 @@ $(document).ready(function(){
 });
 
 function disableAlarmByName(name, checked){
-    if(checked) $('.timepicker[name='+name+']').parent().show('normal');
-    else $('.timepicker[name='+name+']').parent().hide('normal');
+    if(checked) $('.timepicker[name=water_alarmtime_1]').parent().show('normal');
+    else $('.timepicker[name=water_alarmtime_1]').parent().hide('normal');
     //el.parentNode.style.visibility = x.checked?"visible":"hidden";
 }
 

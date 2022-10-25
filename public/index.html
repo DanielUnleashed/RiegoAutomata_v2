@@ -42,7 +42,7 @@
 	<script>
 	    $(function() {
 			var initialTime = '';
-			database.ref('water/water_alarm_1').get().then((snapshot) => {
+			database.ref('water/alarmtime_1').get().then((snapshot) => {
 				initialTime = snapshot.val();
 				$('.timepicker').timepicker({
 					defaultTime: initialTime
@@ -69,10 +69,10 @@
 	    	var item_name = item.attr('name');
 	    	var time = item.val();
 
-        	firebase.database().ref('water').child(item_name).set(time);
+        	firebase.database().ref('water/alarmtime_1').set(time);
 	    }
 
-		database.ref('water/water_alarm_1').on('value', (snapshot) => {
+		database.ref('water/alarmtime_1').on('value', (snapshot) => {
             let v = snapshot.val();
 			$('.timepicker').timepicker({
 				value: v,
@@ -168,7 +168,7 @@
 				            		<input type="checkbox" name="water_alarm_1" id="water_alarm_1" checked="checked" onclick="sendToServer(this)">
 				            	</div></div>
 				            	<div class="ui-block-b"><div>
-									      <input class="timepicker" id="timepicker" name="water_alarm_1"/>
+									      <input class="timepicker" id="timepicker" name="water_alarmtime_1"/>
 				            	</div></div>
 			            	</div>
 			            </li>

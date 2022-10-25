@@ -24,8 +24,9 @@ void FirebaseServer::startFirebase(){
 
 bool FirebaseServer::getBool(String path, bool outputIfError, bool waitForResponse){
     bool ok = false;
+    bool wrongVariable = true;
     if(!checkConnection(waitForResponse, ok)) return outputIfError;
-    if(Firebase.RTDB.getBool(&fbdo, path.c_str()) && fbdo.dataType() == "bool"){
+    if(Firebase.RTDB.getBool(&fbdo, path)){
         ok = true;
         return fbdo.boolData();
     }else{
@@ -40,7 +41,7 @@ bool FirebaseServer::getBool(String path, bool outputIfError, bool waitForRespon
 bool FirebaseServer::setBool(String path, bool value, bool waitForResponse){
     bool ok = false;
     if(!checkConnection(waitForResponse, ok)) return ok;
-    if(Firebase.RTDB.setBool(&fbdo, path.c_str(), value)){
+    if(Firebase.RTDB.setBool(&fbdo, path, value)){
         ok = true;
     }else{
         String mssg = "Fail to send bool " + String(value) + " to " +  path + " (" + fbdo.errorReason() + ")";
@@ -54,7 +55,7 @@ bool FirebaseServer::setBool(String path, bool value, bool waitForResponse){
 int FirebaseServer::getInt(String path, int outputIfError, bool waitForResponse){
     bool ok = false;
     if(!checkConnection(waitForResponse, ok)) return outputIfError;
-    if(Firebase.RTDB.getInt(&fbdo, path.c_str()) && fbdo.dataType() == "int"){
+    if(Firebase.RTDB.getInt(&fbdo, path)){
         ok = true;
         return fbdo.intData();
     }else{
@@ -70,7 +71,7 @@ int FirebaseServer::getInt(String path, int outputIfError, bool waitForResponse)
 bool FirebaseServer::setInt(String path, int value, bool waitForResponse){
     bool ok = false;
     if(!checkConnection(waitForResponse, ok)) return ok;
-    if(Firebase.RTDB.setInt(&fbdo, path.c_str(), value)){
+    if(Firebase.RTDB.setInt(&fbdo, path, value)){
         ok = true;
     }else{
         String mssg = "Fail to send int " + String(value) + " to " +  path + " (" + fbdo.errorReason() + ")";
@@ -84,11 +85,11 @@ bool FirebaseServer::setInt(String path, int value, bool waitForResponse){
 String FirebaseServer::getString(String path, String outputIfError, bool waitForResponse){
     bool ok = false;
     if(!checkConnection(waitForResponse, ok)) return outputIfError;
-    if(Firebase.RTDB.getString(&fbdo, path.c_str()) && fbdo.dataType() == "string"){
+    if(Firebase.RTDB.getString(&fbdo, path)){
         ok = true;
         return fbdo.stringData();
     }else{
-        String mssg = "Fail to fetch to " +  path + " (" + fbdo.errorReason() + ")";
+        String mssg = "Fail to fetch string to " +  path + " (" + fbdo.errorReason() + ")";
         Serial.println(mssg);
         //SU.log(mssg);
         ok = false;
@@ -99,7 +100,7 @@ String FirebaseServer::getString(String path, String outputIfError, bool waitFor
 bool FirebaseServer::setString(String path, String value, bool waitForResponse){
     bool ok = false;
     if(!checkConnection(waitForResponse, ok)) return ok;
-    if(Firebase.RTDB.setString(&fbdo, path.c_str(), value)){
+    if(Firebase.RTDB.setString(&fbdo, path, value)){
         ok = true;
     }else{
         String mssg = "Fail to send " + String(value) + " to " +  path + " (" + fbdo.errorReason() + ")";

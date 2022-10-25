@@ -39,7 +39,7 @@ const char* ssid = "Aitina";
 const char* password = "270726VorGes_69*";
 
 #define LED_TIME 20*1000
-String ledMode = "";
+String ledMode = "Off";
 uint8_t ledBrightness = 255;
 
 WiFiUDP ntpUDP;
@@ -149,6 +149,12 @@ void setup() {
       delay(34); // 1/30 Hz
     }
   }, "LedTask", 2000, NULL, 1, NULL, 0);
+
+
+  Serial.println(firebase.getBool("water/alarm_1", false));
+  Serial.println(firebase.getString("water/alarmtime_1", ""));
+  Serial.println(firebase.getString("water/lastwatering", ""));
+
 }
 
 Input presence(PRESENCE_PIN, LED_TIME, false, 8000);
@@ -175,9 +181,9 @@ void loop() {
 
   bool requestedWatering = motorButton.inputHigh() || firebase.getString("water/now", "stop")=="go";
   
-  String wateringTimeAlarm = firebase.getString("water/alarm_1", "");
+  String wateringTimeAlarm = firebase.getString("water/alarmtime_1", "");
   bool waterAlarmIsValid = false;
-  if(wateringTimeAlarm != ""){
+  if(wateringTimeAlarm != "" && firebase.getBool("water/alarm_1", true)){
     uint8_t indexOfTwoDots = wateringTimeAlarm.indexOf(':');
     uint8_t hourAlarm = wateringTimeAlarm.substring(0, indexOfTwoDots).toInt();
     uint8_t minuteAlarm = wateringTimeAlarm.substring(indexOfTwoDots+1, wateringTimeAlarm.length()).toInt();
