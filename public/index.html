@@ -196,25 +196,35 @@
 		var intervalID = 0;
 		function waterNow(x){
 			let message = '';
-			if(x.innerHTML == 'Detener riego'){
-				x.innerHTML = 'Regar ahora';
-				$(x).attr('data-theme', 'a').removeClass("ui-btn-b").addClass("ui-btn-a");
+			if(x.innerHTML == 'Detener riego'){ // Stop watering!
+				//changeWaterNowInterface(false); No need to add this, as it is already added in the app.js
 				message = 'stop';
-				wateringTime = 0;
-				$('#span[name=water_wateringinfo]').html('');
-				clearInterval(intervalID);
-			}else{
-				x.innerHTML = 'Detener riego';
-				$(x).attr('data-theme', 'b').removeClass("ui-btn-a").addClass("ui-btn-b");
+			}else{ // Water now!
+				//changeWaterNowInterface(true);
 				message = 'go';
+				firebase.database().ref('water/lastwatering').set(new Date().toLocaleTimeString());
+			}
+			firebase.database().ref('water').child('now').set(message);
+		}
+
+		function changeWaterNowInterface(waterNow){
+			var but = $('button[name=water_waternow]');
+			if(waterNow){
+				but.html('Detener riego');
+				but.attr('data-theme', 'b').removeClass("ui-btn-a").addClass("ui-btn-b");
 				wateringTime = $('#water_time').val();
 
 				waterInfoInterval();
 				intervalID = setInterval(function(){
 					waterInfoInterval();
 				}, 1000);
+			}else{
+				but.html('Regar ahora');
+				but.attr('data-theme', 'a').removeClass("ui-btn-b").addClass("ui-btn-a");
+				wateringTime = 0;
+				$('#span[name=water_wateringinfo]').html('');
+				clearInterval(intervalID);
 			}
-			firebase.database().ref('water').child('now').set(message);
 		}
 
 		function waterInfoInterval(){

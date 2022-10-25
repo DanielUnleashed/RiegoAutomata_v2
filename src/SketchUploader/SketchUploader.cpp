@@ -3,14 +3,13 @@
 AsyncWebServer SketchUploader::server(80);
 AsyncEventSource SketchUploader::events("/events");
 
-WiFiUDP SketchUploader::ntpUDP;
-NTPClient SketchUploader::timeClient(SketchUploader::ntpUDP);
-
 SketchUploader SU;
 
 SketchUploader::SketchUploader(){}
 
-void SketchUploader::startServer(){
+void SketchUploader::startServer(NTPClient* tc){
+  timeClient = tc;
+
   const char* host = "esp32";
     if (!MDNS.begin(host)) { //http://esp32.local
     Serial.println("Error setting up MDNS responder!");
@@ -82,9 +81,6 @@ void SketchUploader::startServer(){
   server.addHandler(&events);
   server.begin();
 
-  timeClient.begin();
-  timeClient.setTimeOffset(3600*2); // GMT+2 Horario de verano, GMT+1 Horario de invierno
-
   log("Server ready!");
 }
 
@@ -95,18 +91,12 @@ void SketchUploader::log(String str){
   // Wait for 500 ms between messages
   if((startTime-lastTimeLog) < 250) return;
 
-  while(!timeClient.update() && (millis()-startTime)<2000){
-    timeClient.forceUpdate();
+  while(!timeClient->update() && (millis()-startTime)<2000){
+    timeClient->forceUpdate();
   }
-  String formDate = timeClient.getFormattedDate();
+  String formDate = timeClient->getFormattedDate();
   //Example:  2018-05-28T16:00:13Z
-
-  int splitT = formDate.indexOf("T");
-  int splitBar = formDate.indexOf("-");
-  String date = formDate.substring(splitBar+1, splitT); // Month and day only
-  int splitBar2 = date.indexOf("-");
-  date = date.substring(splitBar2+1, date.length()) + "/" + date.substring(0, splitBar2);
-  String timeStamp = formDate.substring(splitT+1, formDate.length()-1);
+  String date = Utils::dateFormater(formDate);
 
   if(logPointer == MAX_LOG_MEMORY-1){
     for(uint8_t i = 0; i < MAX_LOG_MEMORY-1; i++){
@@ -114,7 +104,7 @@ void SketchUploader::log(String str){
     }
     logPointer--;
   }
-  String message = date + " " + timeStamp + " > " + str;
+  String message = date + " > " + str;
   lastLogs[logPointer++] = message;
   events.send(message.c_str(), "console", startTime);
 

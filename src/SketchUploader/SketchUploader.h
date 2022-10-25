@@ -12,6 +12,8 @@
 
 #include <Update.h>
 
+#include "Utils.h"
+
 #include <array>
 
 //#include "SketchUploader_web/login.h"
@@ -28,10 +30,9 @@ class SketchUploader {
 
     static AsyncWebServer server;
     static AsyncEventSource events;
-    static WiFiUDP ntpUDP;
-    static NTPClient timeClient;
+    NTPClient* timeClient;
 
-    void startServer();
+    void startServer(NTPClient*);
 
     void log(String str);
 

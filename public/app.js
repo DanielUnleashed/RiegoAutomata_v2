@@ -1,6 +1,17 @@
 var nameArrayElements = ['led_led', 'led_presence', 'led_brightness', 'led_mode', 'water_wateringinfo', 'water_lastwatering', 'water_time', 'water_alarm_1'];
 
 $(document).ready(function(){
+    database.ref('water/now').on('value', (snapshot) => {
+        let value = snapshot.val();
+        if(value == 'go'){
+            changeWaterNowInterface(true);
+        }else if(value == 'stop'){
+            changeWaterNowInterface(false);
+        }
+    }, (errorObject) => {
+        console.log('The read failed: ' + errorObject.name);
+    });
+
     for(let i = 0; i < nameArrayElements.length; i++){
         let name = nameArrayElements[i];
         

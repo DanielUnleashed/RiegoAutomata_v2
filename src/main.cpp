@@ -1,8 +1,11 @@
 #include <Arduino.h>
 #include "SketchUploader/SketchUploader.h"
 #include "Input.h"
+#include "Utils.h"
 
 #include "FirebaseServer.h"
+
+#include <NTPClient.h>
 
 // Ultrasound sensor (deposit)
 #define TRIGGER_PIN 32
@@ -36,6 +39,11 @@ const char* ssid = "Aitina";
 const char* password = "270726VorGes_69*";
 
 #define LED_TIME 20*1000
+String ledMode = "";
+uint8_t ledBrightness = 255;
+
+WiFiUDP ntpUDP;
+NTPClient timeClient(ntpUDP);
   
 double measureUltrasoundDistance() {
   double distanceSum = 0;
@@ -99,8 +107,11 @@ void setup() {
   Serial.print("IP address: ");
   Serial.println(WiFi.localIP());
 
+  timeClient.begin();
+  timeClient.setTimeOffset(3600*2); // GMT+2 Horario de verano, GMT+1 Horario de invierno
+
   // Sketch Uploader
-  SU.startServer();
+  SU.startServer(&timeClient);
   firebase.startFirebase();
 
   pinMode(PRESENCE_PIN, INPUT);
@@ -121,31 +132,76 @@ void setup() {
   ledcAttachPin(MOTOR_A_PWM, 1);
   ledcSetup(2, 5000, 8);
   ledcAttachPin(MOTOR_B_PWM, 2);
+
+  xTaskCreatePinnedToCore([](void *funcParams){
+    for(;;){
+      if(ledMode == "Continuo"){
+        ledcWrite(0, ledBrightness);
+      }else if(ledMode == "Seno"){
+        double omega = map(ledBrightness, 0, 255, 0, TWO_PI*30);
+        ledcWrite(0, 128*(1 + sin(omega*millis()/1000.0)));
+      }else if(ledMode == "Parpadeo"){
+        double omega = map(ledBrightness, 0, 255, 0, TWO_PI*30);
+        ledcWrite(0, (sin(omega*millis()/1000.0)>0)?255:0);
+      }else{
+        ledcWrite(0,0);
+      }
+      delay(34); // 1/30 Hz
+    }
+  }, "LedTask", 2000, NULL, 1, NULL, 0);
 }
 
 Input presence(PRESENCE_PIN, LED_TIME, false, 8000);
 Input motorButton(BUTTON, MOTOR_TIME, true, 500);
 bool lastLightsState = false;
 
+uint32_t startWateringAlarmTime = 0;
+bool startWateringAlarmLock = false;
+uint8_t wateringAlarmDuration = 0; 
+
 void loop() {
   bool forceLightsOn = firebase.getBool("led/led", false);
   bool listenToPresenceSensor = firebase.getBool("led/presence", true);
   bool lightsOn = forceLightsOn || (presence.inputHigh() && listenToPresenceSensor);
   if(lightsOn){
-    if(!lastLightsState) //SU.log("Lights on");
-    ledcWrite(0, 255);
+    if(!lastLightsState) SU.log("Lights on");
+    ledMode = firebase.getString("led/mode", "Off");
+    ledBrightness = firebase.getInt("led/brightness", 100)*2.55;
   }else{
-    if(lastLightsState) //SU.log("Lights off");
-    ledcWrite(0, 0);
+    if(lastLightsState) SU.log("Lights off");
+    ledMode = "Off";
   }
   lastLightsState = lightsOn;
 
-  bool motorState = motorButton.inputHigh();
+  bool requestedWatering = motorButton.inputHigh() || firebase.getString("water/now", "stop")=="go";
+  
+  String wateringTimeAlarm = firebase.getString("water/alarm_1", "");
+  bool waterAlarmIsValid = false;
+  if(wateringTimeAlarm != ""){
+    uint8_t indexOfTwoDots = wateringTimeAlarm.indexOf(':');
+    uint8_t hourAlarm = wateringTimeAlarm.substring(0, indexOfTwoDots).toInt();
+    uint8_t minuteAlarm = wateringTimeAlarm.substring(indexOfTwoDots+1, wateringTimeAlarm.length()).toInt();
+    bool waterAlarmStart = timeClient.getHours()==hourAlarm && timeClient.getMinutes()==minuteAlarm;
+    // All this just in case the alarm last less than a minute.
+    if(!startWateringAlarmLock && waterAlarmStart){
+      startWateringAlarmLock = true;
+      startWateringAlarmTime = millis();
+      wateringAlarmDuration = firebase.getInt("water/time", 10); // Default watering time: 10 seconds?
+      firebase.setString("water/lastwatering", timeClient.getFormattedTime(), true);
+    }
+    waterAlarmIsValid =  (millis()-startWateringAlarmLock) < wateringAlarmDuration;
+    // Finally release the lock.
+    if(waterAlarmIsValid && timeClient.getMinutes()!=minuteAlarm){
+      startWateringAlarmLock = false;
+    }
+  }
+
+  bool motorState = requestedWatering || waterAlarmIsValid;
   if(motorState){
     if(!motorsRunning){
       bootUpMotors();
       SU.log("Motors on");
-      firebase.setBool("test/motor", true);
+      firebase.setString("water/now", "go");
     }
     ledcWrite(1, 255);
     ledcWrite(2, 255);
@@ -153,7 +209,7 @@ void loop() {
     if(motorsRunning){
       bootDownMotors();
       SU.log("Motors off");
-      firebase.setBool("test/motor", true);
+      firebase.setString("water/now", "stop");
     }
     ledcWrite(1, 0);
     ledcWrite(2, 0);
@@ -161,19 +217,3 @@ void loop() {
 
   delay(1000);
 }
-
-/*
-  xTaskCreatePinnedToCore([](void *funcParams){
-      for(;;){
-        for(int dutyCycle = 0; dutyCycle <= 255; dutyCycle++){   
-          ledcWrite(0, dutyCycle);
-          delay(15);
-        }
-
-        // decrease the LED brightness
-        for(int dutyCycle = 255; dutyCycle >= 0; dutyCycle--){
-          ledcWrite(0, dutyCycle);   
-          delay(15);
-        }
-      }
-  }, "blink", 2000, NULL, 1, NULL, 0);*/
