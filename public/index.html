@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<title>Riego Automata</title>
+
+  <!-- The core Firebase JS SDK is always required and must be listed first -->
+  <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+
+  <!-- TODO: Add SDKs for Firebase products that you want to use
+      https://firebase.google.com/docs/web/setup#available-libraries -->
+  <script src="https://www.gstatic.com/firebasejs/8.8.1/firebase-database.js"></script>
+
+  <script>
+    var firebaseConfig = {
+      apiKey: "AIzaSyDSoplVaOu7G2scs2VRdsy-WdoT7sespDk",
+      authDomain: "riego-automata.firebaseapp.com",
+      databaseURL: "https://riego-automata-default-rtdb.europe-west1.firebasedatabase.app",
+      projectId: "riego-automata",
+      storageBucket: "riego-automata.appspot.com",
+      messagingSenderId: "241264727623",
+      appId: "1:241264727623:web:c8c5d0fb7c396437a48362"
+    };
+    firebase.initializeApp(firebaseConfig);
+    var database = firebase.database();
+  </script>
+
+  <script src="app.js" defer></script>
+
+	<!-- <link rel="stylesheet" href="themes/webstyle.min.css" /> -->
+	<link rel="stylesheet" href="https://code.jquery.com/mobile/1.4.5/jquery.mobile-1.4.5.min.css" />
+	<link rel="stylesheet" href="https://code.jquery.com/mobile/1.4.5/jquery.mobile.structure-1.4.5.min.css" />
+
+	<script src="https://code.jquery.com/jquery-1.11.1.min.js"></script>
+	<script src="https://code.jquery.com/mobile/1.4.5/jquery.mobile-1.4.5.min.js"></script>
+
+	<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/timepicker/1.3.5/jquery.timepicker.min.css">
+	<script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/timepicker/1.3.5/jquery.timepicker.min.js">
+	</script>
+
+	<script>
+	    $(function() {
+			var initialTime = '';
+			database.ref('water/water_alarm_1').get().then((snapshot) => {
+				initialTime = snapshot.val();
+				$('.timepicker').timepicker({
+					defaultTime: initialTime
+				});
+			});
+	    
+			$('.timepicker').timepicker({
+				timeFormat: 'H:mm',
+				interval: 30,
+				minTime: '24:00',
+				maxTime: '23:30',
+				defaultTime: initialTime,
+				startTime: '0:00',
+				dynamic: false,
+				dropdown: true,
+				scrollbar: false,
+				change: changeHourVal
+			});
+		});
+
+	    function changeHourVal(){
+	    	var item = $(this);
+
+	    	var item_name = item.attr('name');
+	    	var time = item.val();
+
+        	firebase.database().ref('water').child(item_name).set(time);
+	    }
+
+		database.ref('water/water_alarm_1').on('value', (snapshot) => {
+            let v = snapshot.val();
+			$('.timepicker').timepicker({
+				value: v,
+			});
+        }, (errorObject) => {
+            console.log('The read failed: ' + errorObject.name);
+        });
+	</script>
+
+</head>
+
+<body>
+	<div data-role="page" data-theme="a">
+		<div data-role="header" data-position="inline">
+			<h1>Riego Automata_v2</h1>
+		</div>
+
+	<div data-theme="a" role="main" class="ui-content">
+
+		<div data-form="ui-body-a">
+			<p style="text-align:center">Hora actual: <span id="hour-span"></span></p>
+		</div>
+		
+
+		<ul data-role="listview" data-inset="true">
+            <li data-role="list-divider" data-theme="a" data-swatch="a" data-form="ui-bar-a" role="heading">Iluminación</li>
+            <li data-form="ui-body-a" data-swatch="a" data-theme="a">
+            <div data-role="fieldcontain"> 
+              <label style="width: 30%;">Encender LEDs:</label>
+              <fieldset style="float: left; width: 40%;"  data-role="controlgroup"  data-type="horizontal" data-role="fieldcontain">
+                <input type="radio" name="led_led" id="radio-choice-a1" value="true" onclick="sendToServer(this)"/>
+                <label for="radio-choice-a1">On</label>
+                <input type="radio" name="led_led" id="radio-choice-b1" value="false"  onclick="sendToServer(this)"/>
+                <label for="radio-choice-b1">Off</label>
+              </fieldset>
+            </div>
+            </li>
+
+            <li data-form="ui-body-a" data-swatch="a" data-theme="a">
+              <div data-role="fieldcontain" > 
+                <label style="width: 30%;" for="led_presence">Sensor de presencia:</label>
+                <fieldset style="float: left; width: 40%;" data-role="controlgroup"  data-type="horizontal" data-role="fieldcontain">
+                  <input type="radio" name="led_presence" id="radio-choice-a2" value="true" onclick="sendToServer(this)"/>
+                  <label for="radio-choice-a2">On</label>
+                  <input type="radio" name="led_presence" id="radio-choice-b2" value="false"  onclick="sendToServer(this)"/>
+                  <label for="radio-choice-b2">Off</label>
+                </fieldset>
+              </div>
+              </li>
+            
+            <li data-form="ui-body-a" data-swatch="a" data-theme="a">
+            	<div data-role="fieldcontain"> 
+	            	<label>Brillo (%):</label>
+					<input type=range name="led_brightness" id="led_brightness" value="100" min="0" max="100" data-theme="a" onchange="sendToServer(this)"/>
+				</div>
+            </li>
+            <li data-form="ui-body-a" data-swatch="a" data-theme="a">
+            	<div data-role="fieldcontain"> 
+            		<label>Modo:</label>
+					<select name="led_mode" id="led_mode" data-native-menu="false" data-theme="a" data-form="ui-btn-up-a" tabindex="-1" onchange="sendToServer(this)">
+						<option value="Continuo">Continuo</option>
+						<option value="Seno">Seno</option>
+						<option value="Parpadeo">Parpadeo</option>
+					</select>
+				</div>
+            </li>
+		</ul>
+
+		<ul data-role="listview" data-inset="true">
+            <li data-role="list-divider" data-theme="a" data-swatch="a" data-form="ui-bar-a" role="heading">Riego</li>
+            <li data-form="ui-body-a" data-swatch="a" data-theme="a">
+				<button data-icon="star" data-theme="a" data-form="ui-btn-a" name="water_waternow" id='water_waternow' onclick="waterNow(this)">Regar ahora</button>
+				<div data-form="ui-body-a">
+					<p style="text-align:center">Último riego: <span name="water_lastwatering" id="span"></span></p>
+					<p style="text-align:center" name="water_wateringinfo" id="span"></p>
+				</div>
+            </li>
+            <li data-form="ui-body-a" data-swatch="a" data-theme="a">
+            	<div data-role="fieldcontain"> 
+	            	<label>Duración (seg):</label>
+					<input type="range" name="water_time" id="water_time" value="30" min="5" max="100" data-theme="a" onchange="sendToServer(this)"/>
+				</div>
+            </li>
+
+            <li>
+            	<div data-role="collapsible" class="ui-collapsible">
+            		<h2 class="ui-collapsible-heading">Alarmas</h2>
+	            	<ul data-role="listview" data-inset="false">
+	            		<li>
+	            			<div class="ui-grid-a">
+		            			<div class="ui-block-a"><div class="ui-checkbox">
+				            		<label for="water_alarm_1" class="ui-btn">Alarma 1</label>
+				            		<input type="checkbox" name="water_alarm_1" id="water_alarm_1" checked="checked" onclick="sendToServer(this)">
+				            	</div></div>
+				            	<div class="ui-block-b"><div>
+									      <input class="timepicker" id="timepicker" name="water_alarm_1"/>
+				            	</div></div>
+			            	</div>
+			            </li>
+	            	</ul>
+            	</div>
+            </li>
+		</ul>
+
+		<!--
+		<button data-icon="star" data-theme="a" data-form="ui-btn-up-a" class=" ui-btn ui-btn-a ui-icon-star ui-btn-icon-left ui-shadow ui-corner-all">Button</button>
+		-->
+	</div>
+
+	<script type="text/javascript">
+		var hourSpan = document.getElementById('hour-span');
+		function updateHour(){
+			hourSpan.innerHTML = new Date().toLocaleTimeString();
+		}
+		updateHour();
+		setInterval(function(){
+			updateHour();
+		}, 1000);
+
+		var wateringTime = 0;
+		var intervalID = 0;
+		function waterNow(x){
+			let message = '';
+			if(x.innerHTML == 'Detener riego'){
+				x.innerHTML = 'Regar ahora';
+				$(x).attr('data-theme', 'a').removeClass("ui-btn-b").addClass("ui-btn-a");
+				message = 'stop';
+				wateringTime = 0;
+				$('#span[name=water_wateringinfo]').html('');
+				clearInterval(intervalID);
+			}else{
+				x.innerHTML = 'Detener riego';
+				$(x).attr('data-theme', 'b').removeClass("ui-btn-a").addClass("ui-btn-b");
+				message = 'go';
+				wateringTime = $('#water_time').val();
+
+				waterInfoInterval();
+				intervalID = setInterval(function(){
+					waterInfoInterval();
+				}, 1000);
+			}
+			firebase.database().ref('water').child('now').set(message);
+		}
+
+		function waterInfoInterval(){
+			$('#span[name=water_wateringinfo]').html('Quedan ' + wateringTime + ' segundos');
+			wateringTime--;
+			if(wateringTime == -1){
+				$('#water_waternow').click();
+			}else if(wateringTime == -2){
+				$('#span[name=water_wateringinfo]').html('');
+				clearInterval(intervalID);
+			}
+		}
+
+	</script>
+
+</body>
+</html>

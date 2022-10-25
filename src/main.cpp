@@ -2,6 +2,8 @@
 #include "SketchUploader/SketchUploader.h"
 #include "Input.h"
 
+#include "FirebaseServer.h"
+
 // Ultrasound sensor (deposit)
 #define TRIGGER_PIN 32
 #define ECHO_PIN 35
@@ -76,6 +78,7 @@ void bootDownMotors(){
 
 void setup() {
   Serial.begin(115200);
+  delay(500);
 
   pinMode(TRIGGER_PIN, OUTPUT);
   pinMode(ECHO_PIN, INPUT);
@@ -98,6 +101,7 @@ void setup() {
 
   // Sketch Uploader
   SU.startServer();
+  firebase.startFirebase();
 
   pinMode(PRESENCE_PIN, INPUT);
   pinMode(LEDSTRIP_PIN, OUTPUT);
@@ -121,24 +125,27 @@ void setup() {
 
 Input presence(PRESENCE_PIN, LED_TIME, false, 8000);
 Input motorButton(BUTTON, MOTOR_TIME, true, 500);
-bool lastPresenceState = false;
+bool lastLightsState = false;
 
 void loop() {
-  bool presenceState = presence.inputHigh();
-  if(presenceState){
-    if(!lastPresenceState) SU.log("Lights on");
+  bool forceLightsOn = firebase.getBool("led/led", false);
+  bool listenToPresenceSensor = firebase.getBool("led/presence", true);
+  bool lightsOn = forceLightsOn || (presence.inputHigh() && listenToPresenceSensor);
+  if(lightsOn){
+    if(!lastLightsState) //SU.log("Lights on");
     ledcWrite(0, 255);
   }else{
-    if(lastPresenceState) SU.log("Lights off");
+    if(lastLightsState) //SU.log("Lights off");
     ledcWrite(0, 0);
   }
-  lastPresenceState = presenceState;
+  lastLightsState = lightsOn;
 
   bool motorState = motorButton.inputHigh();
   if(motorState){
     if(!motorsRunning){
       bootUpMotors();
       SU.log("Motors on");
+      firebase.setBool("test/motor", true);
     }
     ledcWrite(1, 255);
     ledcWrite(2, 255);
@@ -146,12 +153,13 @@ void loop() {
     if(motorsRunning){
       bootDownMotors();
       SU.log("Motors off");
+      firebase.setBool("test/motor", true);
     }
     ledcWrite(1, 0);
     ledcWrite(2, 0);
   }
 
-  delay(50);
+  delay(1000);
 }
 
 /*

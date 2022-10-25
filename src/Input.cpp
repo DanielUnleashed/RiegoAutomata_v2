@@ -1,7 +1,7 @@
 #include <Input.h>
 
 Input::Input(uint8_t pin, uint32_t delay, bool biestable, uint32_t validationTime){
-  digitalWrite(pin, LOW);
+  if(digitalPinCanOutput(pin)) digitalWrite(pin, LOW);
   pinMode(pin, INPUT);
   this->pin = pin;
   this->delayTime = delay;
@@ -27,7 +27,7 @@ void Input::fetchInput(){
 
     if(isPressed && (currentTime - startPressTime)>validationTime){
         if(biestableInput && (currentTime - startTime)<delayTime){ // Button was already pressed
-          startTime = 0; // Release the button
+          startTime = 0; // Release the button. May not work at the beginning of boot up.
           isHigh = false;
         }else{
           startTime = currentTime;
@@ -40,7 +40,7 @@ void Input::fetchInput(){
 
     if(!isPressed && (currentTime - startReleaseTime)>validationTime){
         isPressed = false;
-        isHigh = false;
+        isHigh = false; // May change in the next lines.
     }
   }
   isPressed = currentState;
