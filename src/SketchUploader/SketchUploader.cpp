@@ -86,10 +86,8 @@ void SketchUploader::startServer(NTPClient* tc){
 
 void SketchUploader::log(String str){
   static uint32_t lastTimeLog = 0;
+  static uint8_t accumulatedMessages = 0;
   uint32_t startTime = millis();
-
-  // Wait for 500 ms between messages
-  if((startTime-lastTimeLog) < 250) return;
 
   while(!timeClient->update() && (millis()-startTime)<2000){
     timeClient->forceUpdate();
@@ -106,9 +104,18 @@ void SketchUploader::log(String str){
   }
   String message = date + " > " + str;
   lastLogs[logPointer++] = message;
-  events.send(message.c_str(), "console", startTime);
 
-  Serial.println(str);
+  Serial.println(message);
+
+  accumulatedMessages++;
+    // Wait for 250 ms between messages
+  if((startTime-lastTimeLog) < 250){
+    return;
+  }
+  for(uint8_t i = logPointer-accumulatedMessages; i < logPointer; i++){
+    events.send(lastLogs[i].c_str(), "console", startTime);
+  }
+  accumulatedMessages = 0;
 
   lastTimeLog = startTime;
 }

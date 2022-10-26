@@ -151,9 +151,10 @@ void setup() {
   }, "LedTask", 2000, NULL, 1, NULL, 0);
 
 
-  Serial.println(firebase.getBool("water/alarm_1", false));
-  Serial.println(firebase.getString("water/alarmtime_1", ""));
-  Serial.println(firebase.getString("water/lastwatering", ""));
+  SU.log("Alarm1: " + String(firebase.getBool("water/alarm_1", false)));
+  SU.log("Alarm1_time: " + firebase.getString("water/alarmtime_1", ""));
+  SU.log("Last watering time: " + firebase.getString("water/lastwatering", ""));
+  SU.log("Led brightness " + String(firebase.getInt("led/brightness", 100)));
 
 }
 
@@ -166,6 +167,8 @@ bool startWateringAlarmLock = false;
 uint8_t wateringAlarmDuration = 0; 
 
 void loop() {
+  return;
+  
   bool forceLightsOn = firebase.getBool("led/led", false);
   bool listenToPresenceSensor = firebase.getBool("led/presence", true);
   bool lightsOn = forceLightsOn || (presence.inputHigh() && listenToPresenceSensor);

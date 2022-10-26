@@ -42,7 +42,7 @@
 	<script>
 	    $(function() {
 			var initialTime = '';
-			database.ref('water/alarmtime_1').get().then((snapshot) => {
+			database.ref('water/water_alarm_1').get().then((snapshot) => {
 				initialTime = snapshot.val();
 				$('.timepicker').timepicker({
 					defaultTime: initialTime
@@ -69,10 +69,10 @@
 	    	var item_name = item.attr('name');
 	    	var time = item.val();
 
-        	firebase.database().ref('water/alarmtime_1').set(time);
+        	firebase.database().ref('water').child(item_name).set(time);
 	    }
 
-		database.ref('water/alarmtime_1').on('value', (snapshot) => {
+		database.ref('water/water_alarm_1').on('value', (snapshot) => {
             let v = snapshot.val();
 			$('.timepicker').timepicker({
 				value: v,
@@ -125,18 +125,19 @@
             
             <li data-form="ui-body-a" data-swatch="a" data-theme="a">
             	<div data-role="fieldcontain"> 
-	            	<label>Brillo (%):</label>
-					<input type=range name="led_brightness" id="led_brightness" value="100" min="0" max="100" data-theme="a" onchange="sendToServer(this)"/>
-				</div>
-            </li>
-            <li data-form="ui-body-a" data-swatch="a" data-theme="a">
-            	<div data-role="fieldcontain"> 
             		<label>Modo:</label>
 					<select name="led_mode" id="led_mode" data-native-menu="false" data-theme="a" data-form="ui-btn-up-a" tabindex="-1" onchange="sendToServer(this)">
 						<option value="Continuo">Continuo</option>
 						<option value="Seno">Seno</option>
 						<option value="Parpadeo">Parpadeo</option>
 					</select>
+				</div>
+            </li>
+
+			<li data-form="ui-body-a" data-swatch="a" data-theme="a">
+            	<div data-role="fieldcontain"> 
+	            	<label>Brillo (%):</label>
+					<input type=range name="led_brightness" id="led_brightness" value="100" min="0" max="100" data-theme="a" onchange="sendToServer(this)"/>
 				</div>
             </li>
 		</ul>
@@ -168,7 +169,7 @@
 				            		<input type="checkbox" name="water_alarm_1" id="water_alarm_1" checked="checked" onclick="sendToServer(this)">
 				            	</div></div>
 				            	<div class="ui-block-b"><div>
-									      <input class="timepicker" id="timepicker" name="water_alarmtime_1"/>
+									      <input class="timepicker" id="timepicker" name="water_alarm_1"/>
 				            	</div></div>
 			            	</div>
 			            </li>
