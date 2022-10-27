@@ -66,10 +66,16 @@ double measureUltrasoundDistance() {
   return distanceSum/ULTRASOUND_ITERATIONS;
 }
 
-void updateDepositLevel(){
+uint16_t updateDepositLevel(){
+  static uint32_t lastTimeHere = millis();
+
+  if(millis() - lastTimeHere < 2000) return depositLevel;
+  else lastTimeHere = millis();
+
   depositLevel = measureUltrasoundDistance();
   Serial.printf("Deposit level: %d\n", depositLevel);
   firebase.setInt("deposit/level", depositLevel);
+  return depositLevel;
 }
 
 bool motorsRunning = false;
@@ -103,13 +109,16 @@ void setup() {
 
   // Connect to WiFi network
   WiFi.begin(ssid, password);
-  Serial.println("");
+  Serial.printf("Connecting to %s", ssid);
 
   // Wait for connection
-  while (WiFi.status() != WL_CONNECTED) {
+  while (WiFi.status() != WL_CONNECTED && millis()<45000) {
     delay(500);
     Serial.print(".");
   }
+
+  if(WiFi.status() != WL_CONNECTED) ESP.restart();
+
   Serial.println("");
   Serial.print("Connected to ");
   Serial.println(ssid);
@@ -171,18 +180,20 @@ void setup() {
   SU.log("Led brightness " + String(firebase.getInt("led/brightness", 100)));
 
   updateDepositLevel();
+
+  firebase.setString("water/now", "off");
 }
 
-Input presence(PRESENCE_PIN, LED_TIME, false, 8000);
+Input presence(PRESENCE_PIN, LED_TIME, false, 2000);
 Input motorButton(BUTTON, MOTOR_TIME, true, 500);
 bool lastLightsState = false;
 
-uint32_t startWateringAlarmTime = 0;
-bool startWateringAlarmLock = false;
-uint8_t wateringAlarmDuration = 0; 
+uint32_t startWateringTime = 0;
+bool startWateringLock = false;
+bool waterAlarmLock = false;
+uint16_t wateringAlarmDuration = 0; 
 
 void loop() {
-  return;
   bool forceLightsOn = firebase.getBool("led/led", false);
   bool listenToPresenceSensor = firebase.getBool("led/presence", true);
   bool lightsOn = forceLightsOn || (presence.inputHigh() && listenToPresenceSensor);
@@ -196,10 +207,10 @@ void loop() {
   }
   lastLightsState = lightsOn;
 
-  bool waterAlarmIsValid = false;
-
+  // Water now button inside webpage. "go" message means start watering now!
   String waterNowString = firebase.getString("water/now", "off");
   
+  // Water alarm
   String wateringTimeAlarm = firebase.getString("water/alarmtime_1", "");
   bool waterAlarmStart = false;
   if(wateringTimeAlarm != "" && firebase.getBool("water/alarm_1", true)){
@@ -207,31 +218,44 @@ void loop() {
     uint8_t hourAlarm = wateringTimeAlarm.substring(0, indexOfTwoDots).toInt();
     uint8_t minuteAlarm = wateringTimeAlarm.substring(indexOfTwoDots+1, wateringTimeAlarm.length()).toInt();
     waterAlarmStart = timeClient.getHours()==hourAlarm && timeClient.getMinutes()==minuteAlarm;
+
+    // This lock is needed so the water alarm doesn't get triggered again in the same minute if the watering time is less than 60s.
+    if(waterAlarmLock && timeClient.getMinutes()!=minuteAlarm){
+      waterAlarmLock = false;
+    }
   }
 
-  bool requestWatering = waterAlarmStart || waterNowString=="go" || motorButton.inputHigh();
-  // All this just in case the alarm last less than a minute.
-  if(!startWateringAlarmLock && requestWatering){ 
-    startWateringAlarmLock = true;
-    startWateringAlarmTime = millis();
-    wateringAlarmDuration = firebase.getInt("water/time", 10); // Default watering time: 10 seconds?
-    firebase.setString("water/lastwatering", timeClient.getFormattedTime(), true);
-  }
-  waterAlarmIsValid =  (millis()-startWateringAlarmTime) < wateringAlarmDuration;
-  // Finally release the lock.
-  if(waterAlarmIsValid && timeClient.getMinutes()!=minuteAlarm){
-    startWateringAlarmLock = false;
+  bool requestWatering = (waterAlarmStart && !waterAlarmLock) || waterNowString=="go";
+
+  bool startWateringIsValid = false;
+  if(waterNowString == "stop" || (requestWatering && updateDepositLevel()<10)){
+    wateringAlarmDuration = 0;
+    startWateringTime = 0;
+  }else{
+    if(!startWateringLock && requestWatering){ 
+      startWateringTime = millis();
+      wateringAlarmDuration = firebase.getInt("water/time", 10) * 1000; // Default watering time: 10 seconds?
+      firebase.setString("water/lastwatering", timeClient.getFormattedTime(), true);
+
+      startWateringLock = true;
+      if(waterAlarmStart) waterAlarmLock = true;
+    }
+    startWateringIsValid =  (startWateringTime + wateringAlarmDuration) > millis();
   }
 
-  bool motorState = waterAlarmIsValid && depositLevel>10 && waterNowString!="stop";
+  // Finally release the lock when the time from the first button is pressed has passed.
+  if(!startWateringIsValid) startWateringLock = false;
+
+  bool motorState = (startWateringIsValid || motorButton.inputHigh()) && updateDepositLevel()>10;
   if(motorState){
+    Serial.println("on");
     if(!motorsRunning){
       bootUpMotors();
       SU.log("Motors on");
       firebase.setString("water/now", "on");
     }
-    updateDepositLevel();
   }else{
+    Serial.println("off");
     if(motorsRunning){
       bootDownMotors();
       SU.log("Motors off");

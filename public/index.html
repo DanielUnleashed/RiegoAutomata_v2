@@ -211,10 +211,12 @@
 			if(x.innerHTML == 'Detener riego'){ // Stop watering!
 				//changeWaterNowInterface(false); No need to add this, as it is already added in the app.js
 				message = 'stop';
+				$('button[name=water_waternow]').html("Deteniendo el riego");
 			}else{ // Water now!
 				//changeWaterNowInterface(true);
 				message = 'go';
-				firebase.database().ref('water/lastwatering').set(new Date().toLocaleTimeString());
+				$('button[name=water_waternow]').html("Comenzando el riego");
+				//firebase.database().ref('water/lastwatering').set(new Date().toLocaleTimeString());
 			}
 			firebase.database().ref('water').child('now').set(message);
 		}
@@ -243,9 +245,7 @@
 			$('#span[name=water_wateringinfo]').html('Quedan ' + wateringTime + ' segundos');
 			wateringTime--;
 			if(wateringTime == -1){
-				$('#water_waternow').click();
-			}else if(wateringTime == -2){
-				$('#span[name=water_wateringinfo]').html('');
+				$('#span[name=water_wateringinfo]').html('Esperando confirmación...');
 				clearInterval(intervalID);
 			}
 		}
