@@ -53,19 +53,8 @@ bool FirebaseServer::setBool(String path, bool value, bool waitForResponse){
 }
 
 int FirebaseServer::getInt(String path, int outputIfError, bool waitForResponse){
-    bool ok = false;
-    if(!checkConnection(waitForResponse, ok)) return outputIfError;
-    if(Firebase.RTDB.getInt(&fbdo, path)){
-        ok = true;
-        return fbdo.intData();
-    }else{
-        String mssg = "Fail to fetch int to " +  path + " (" + fbdo.errorReason() + ")";
-        Serial.println(mssg);
-        //SU.log(mssg);
-        ok = false;
-    }
-    return outputIfError;
-
+    String ans = getString(path, "", waitForResponse);
+    return (ans=="")?outputIfError:ans.toInt();
 }
 
 bool FirebaseServer::setInt(String path, int value, bool waitForResponse){

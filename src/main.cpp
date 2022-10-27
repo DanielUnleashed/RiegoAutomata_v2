@@ -11,7 +11,7 @@
 #define TRIGGER_PIN 32
 #define ECHO_PIN 35
 #define SOUND_SPEED 0.034
-#define ULTRASOUND_ITERATIONS 1
+#define ULTRASOUND_ITERATIONS 5
 
 // Deposit LED
 #define DEPOSIT_LED 33
@@ -44,6 +44,8 @@ uint8_t ledBrightness = 255;
 
 WiFiUDP ntpUDP;
 NTPClient timeClient(ntpUDP);
+
+uint16_t depositLevel = 10;
   
 double measureUltrasoundDistance() {
   double distanceSum = 0;
@@ -56,11 +58,18 @@ double measureUltrasoundDistance() {
     digitalWrite(TRIGGER_PIN, LOW);
       
     double duration = pulseIn(ECHO_PIN, HIGH);
+    if(duration==0) return -1;
       
     distanceSum += duration*SOUND_SPEED/2;
     delay(1);
   }
   return distanceSum/ULTRASOUND_ITERATIONS;
+}
+
+void updateDepositLevel(){
+  depositLevel = measureUltrasoundDistance();
+  Serial.printf("Deposit level: %d\n", depositLevel);
+  firebase.setInt("deposit/level", depositLevel);
 }
 
 bool motorsRunning = false;
@@ -146,16 +155,22 @@ void setup() {
       }else{
         ledcWrite(0,0);
       }
+
+      if(motorsRunning){
+        digitalWrite(DEPOSIT_LED, HIGH);
+      }else{
+        digitalWrite(DEPOSIT_LED, LOW);
+      }
       delay(34); // 1/30 Hz
     }
   }, "LedTask", 2000, NULL, 1, NULL, 0);
-
 
   SU.log("Alarm1: " + String(firebase.getBool("water/alarm_1", false)));
   SU.log("Alarm1_time: " + firebase.getString("water/alarmtime_1", ""));
   SU.log("Last watering time: " + firebase.getString("water/lastwatering", ""));
   SU.log("Led brightness " + String(firebase.getInt("led/brightness", 100)));
 
+  updateDepositLevel();
 }
 
 Input presence(PRESENCE_PIN, LED_TIME, false, 8000);
@@ -168,60 +183,60 @@ uint8_t wateringAlarmDuration = 0;
 
 void loop() {
   return;
-  
   bool forceLightsOn = firebase.getBool("led/led", false);
   bool listenToPresenceSensor = firebase.getBool("led/presence", true);
   bool lightsOn = forceLightsOn || (presence.inputHigh() && listenToPresenceSensor);
   if(lightsOn){
-    if(!lastLightsState) SU.log("Lights on");
     ledMode = firebase.getString("led/mode", "Off");
     ledBrightness = firebase.getInt("led/brightness", 100)*2.55;
+    if(!lastLightsState) SU.log("Lights on. Mode " + ledMode + " (" + String(ledBrightness) + ")");
   }else{
     if(lastLightsState) SU.log("Lights off");
     ledMode = "Off";
   }
   lastLightsState = lightsOn;
 
-  bool requestedWatering = motorButton.inputHigh() || firebase.getString("water/now", "stop")=="go";
+  bool waterAlarmIsValid = false;
+
+  String waterNowString = firebase.getString("water/now", "off");
   
   String wateringTimeAlarm = firebase.getString("water/alarmtime_1", "");
-  bool waterAlarmIsValid = false;
+  bool waterAlarmStart = false;
   if(wateringTimeAlarm != "" && firebase.getBool("water/alarm_1", true)){
     uint8_t indexOfTwoDots = wateringTimeAlarm.indexOf(':');
     uint8_t hourAlarm = wateringTimeAlarm.substring(0, indexOfTwoDots).toInt();
     uint8_t minuteAlarm = wateringTimeAlarm.substring(indexOfTwoDots+1, wateringTimeAlarm.length()).toInt();
-    bool waterAlarmStart = timeClient.getHours()==hourAlarm && timeClient.getMinutes()==minuteAlarm;
-    // All this just in case the alarm last less than a minute.
-    if(!startWateringAlarmLock && waterAlarmStart){
-      startWateringAlarmLock = true;
-      startWateringAlarmTime = millis();
-      wateringAlarmDuration = firebase.getInt("water/time", 10); // Default watering time: 10 seconds?
-      firebase.setString("water/lastwatering", timeClient.getFormattedTime(), true);
-    }
-    waterAlarmIsValid =  (millis()-startWateringAlarmLock) < wateringAlarmDuration;
-    // Finally release the lock.
-    if(waterAlarmIsValid && timeClient.getMinutes()!=minuteAlarm){
-      startWateringAlarmLock = false;
-    }
+    waterAlarmStart = timeClient.getHours()==hourAlarm && timeClient.getMinutes()==minuteAlarm;
   }
 
-  bool motorState = requestedWatering || waterAlarmIsValid;
+  bool requestWatering = waterAlarmStart || waterNowString=="go" || motorButton.inputHigh();
+  // All this just in case the alarm last less than a minute.
+  if(!startWateringAlarmLock && requestWatering){ 
+    startWateringAlarmLock = true;
+    startWateringAlarmTime = millis();
+    wateringAlarmDuration = firebase.getInt("water/time", 10); // Default watering time: 10 seconds?
+    firebase.setString("water/lastwatering", timeClient.getFormattedTime(), true);
+  }
+  waterAlarmIsValid =  (millis()-startWateringAlarmTime) < wateringAlarmDuration;
+  // Finally release the lock.
+  if(waterAlarmIsValid && timeClient.getMinutes()!=minuteAlarm){
+    startWateringAlarmLock = false;
+  }
+
+  bool motorState = waterAlarmIsValid && depositLevel>10 && waterNowString!="stop";
   if(motorState){
     if(!motorsRunning){
       bootUpMotors();
       SU.log("Motors on");
-      firebase.setString("water/now", "go");
+      firebase.setString("water/now", "on");
     }
-    ledcWrite(1, 255);
-    ledcWrite(2, 255);
+    updateDepositLevel();
   }else{
     if(motorsRunning){
       bootDownMotors();
       SU.log("Motors off");
-      firebase.setString("water/now", "stop");
+      firebase.setString("water/now", "off");
     }
-    ledcWrite(1, 0);
-    ledcWrite(2, 0);
   }
 
   delay(1000);

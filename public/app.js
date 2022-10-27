@@ -1,11 +1,11 @@
-var nameArrayElements = ['led_led', 'led_presence', 'led_brightness', 'led_mode', 'water_wateringinfo', 'water_lastwatering', 'water_time', 'water_alarm_1'];
+var nameArrayElements = ['led_led', 'led_presence', 'led_brightness', 'led_mode', 'water_wateringinfo', 'water_lastwatering', 'water_time', 'water_alarm_1', 'deposit_level'];
 
 $(document).ready(function(){
     database.ref('water/now').on('value', (snapshot) => {
         let value = snapshot.val();
-        if(value == 'go'){
+        if(value == 'on'){
             changeWaterNowInterface(true);
-        }else if(value == 'stop'){
+        }else if(value == 'off'){
             changeWaterNowInterface(false);
         }
     }, (errorObject) => {
@@ -28,7 +28,7 @@ $(document).ready(function(){
             if(element.value == ""){
                 element.name = value;
             }else if(element.id == 'span'){
-                element.innerHTML = value;
+                $('#span[name='+nameArrayElements[i]+']').html(value);
             }else{
                 if(element.type == "checkbox"){
                     //element.checked = value;
