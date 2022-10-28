@@ -41,42 +41,32 @@
 
 	<script>
 	    $(function() {
-			var initialTime = '';
-			database.ref('water/water_alarm_1').get().then((snapshot) => {
-				initialTime = snapshot.val();
-				$('.timepicker').timepicker({
-					defaultTime: initialTime
-				});
-			});
-	    
 			$('.timepicker').timepicker({
 				timeFormat: 'H:mm',
 				interval: 30,
 				minTime: '24:00',
 				maxTime: '23:30',
-				defaultTime: initialTime,
 				startTime: '0:00',
 				dynamic: false,
 				dropdown: true,
 				scrollbar: false,
 				change: changeHourVal
 			});
+			
+			database.ref('water/alarm_1').get().then((snapshot) => {
+				let initialTime = snapshot.val();
+				$('.timepicker').timepicker('setTime', initialTime);
+			});
 		});
-
+		
 	    function changeHourVal(){
-	    	var item = $(this);
-
-	    	var item_name = item.attr('name');
-	    	var time = item.val();
-
-        	firebase.database().ref('water').child(item_name).set(time);
+			firebase.database().ref('water/alarmtime_1').set($('.timepicker').val());
 	    }
 
-		database.ref('water/water_alarm_1').on('value', (snapshot) => {
+		database.ref('water/alarmtime_1').on('value', (snapshot) => {
             let v = snapshot.val();
-			$('.timepicker').timepicker({
-				value: v,
-			});
+			$('.timepicker').timepicker('setTime', v);
+			//console.log(v);
         }, (errorObject) => {
             console.log('The read failed: ' + errorObject.name);
         });
@@ -100,15 +90,15 @@
 		<ul data-role="listview" data-inset="true">
             <li data-role="list-divider" data-theme="a" data-swatch="a" data-form="ui-bar-a" role="heading">Iluminación</li>
             <li data-form="ui-body-a" data-swatch="a" data-theme="a">
-            <div data-role="fieldcontain"> 
-              <label style="width: 30%;">Encender LEDs:</label>
-              <fieldset style="float: left; width: 40%;"  data-role="controlgroup"  data-type="horizontal" data-role="fieldcontain">
-                <input type="radio" name="led_led" id="radio-choice-a1" value="true" onclick="sendToServer(this)"/>
-                <label for="radio-choice-a1">On</label>
-                <input type="radio" name="led_led" id="radio-choice-b1" value="false"  onclick="sendToServer(this)"/>
-                <label for="radio-choice-b1">Off</label>
-              </fieldset>
-            </div>
+				<div data-role="fieldcontain"> 
+				<label style="width: 30%;">Encender LEDs:</label>
+				<fieldset style="float: left; width: 40%;"  data-role="controlgroup"  data-type="horizontal" data-role="fieldcontain">
+					<input type="radio" name="led_led" id="radio-choice-a1" value="true" onclick="sendToServer(this)"/>
+					<label for="radio-choice-a1">On</label>
+					<input type="radio" name="led_led" id="radio-choice-b1" value="false"  onclick="sendToServer(this)"/>
+					<label for="radio-choice-b1">Off</label>
+				</fieldset>
+				</div>
             </li>
 
             <li data-form="ui-body-a" data-swatch="a" data-theme="a">
@@ -182,11 +172,10 @@
             <li data-role="list-divider" data-theme="a" data-swatch="a" data-form="ui-bar-a" role="heading">Depósito</li>
             <li data-form="ui-body-a" data-swatch="a" data-theme="a">
 				<div data-role="fieldcontain"> 
-					<p3>Nivel del depósito: <span name="deposit_level" id="span"></span> %</p3>
+					<label style="width: fit-content;">Nivel del depósito: <span name="deposit_level" id="span"></span> %</label>
+						<button data-iconpos="left" data-mini="true" data-inline="true" data-icon="refresh" data-theme="a" data-form="ui-btn-up-a" onclick="updateDepositLevel()">Actualizar</button>
 				</div>
             </li>
-
-            
 		</ul>
 
 		<!--
@@ -209,16 +198,24 @@
 		function waterNow(x){
 			let message = '';
 			if(x.innerHTML == 'Detener riego'){ // Stop watering!
-				//changeWaterNowInterface(false); No need to add this, as it is already added in the app.js
 				message = 'stop';
 				$('button[name=water_waternow]').html("Deteniendo el riego");
 			}else{ // Water now!
-				//changeWaterNowInterface(true);
 				message = 'go';
-				$('button[name=water_waternow]').html("Comenzando el riego");
-				//firebase.database().ref('water/lastwatering').set(new Date().toLocaleTimeString());
+				let depositValue = $('#span[name=deposit_level]').html();
+				if(depositValue < 10){
+					$('button[name=water_waternow]').html("Depósito inferior al 10%");
+					setTimeout(function(){
+						$('button[name=water_waternow]').html("Regar ahora");
+					}, 2000);
+					return;
+				}else $('button[name=water_waternow]').html("Comenzando el riego");
 			}
 			firebase.database().ref('water').child('now').set(message);
+		}
+
+		function updateDepositLevel(){
+			firebase.database().ref('messages').set("update_deposit");
 		}
 
 		function changeWaterNowInterface(waterNow){

@@ -12,6 +12,18 @@ $(document).ready(function(){
         console.log('The read failed: ' + errorObject.name);
     });
 
+    database.ref('deposit/level').on('value', (snapshot) => {
+        let value = snapshot.val();
+        $('#span[name=deposit_level]').html(value);
+        if(value > 10){
+            $('#span[name=deposit_level]').css('background', 'none');
+        }else{
+            $('#span[name=deposit_level]').css('background', 'red');
+        }
+    }, (errorObject) => {
+        console.log('The read failed: ' + errorObject.name);
+    });
+
     for(let i = 0; i < nameArrayElements.length; i++){
         let name = nameArrayElements[i];
         
@@ -19,33 +31,34 @@ $(document).ready(function(){
         let id1 = name.substring(0, split);
         let id2 = name.substring(split+1, name.length);
         let serverPath = id1 + '/' + id2;
-    
+
         database.ref(serverPath).on('value', (snapshot) => {
             let element = document.getElementsByName(nameArrayElements[i])[0];
-            
+
             let value = snapshot.val();
-            console.log("Fetching from " + serverPath + " Value=" + value);
+            //console.log("Fetching from " + serverPath + " Value=" + value);
             if(element.value == ""){
                 element.name = value;
-            }else if(element.id == 'span'){
+            }else if(element.tagName == "SPAN"){
                 $('#span[name='+nameArrayElements[i]+']').html(value);
+            }else if(element.tagName == "SELECT"){
+                $('select[name^='+nameArrayElements[i]+'] option[value='+value+']').attr('selected', 'selected');
+                var el = $('select[name^='+nameArrayElements[i]+']');
+                el.selectmenu('refresh', true);
+            }else if(element.type == "checkbox"){
+                $('#' + nameArrayElements[i]).prop("checked", value).checkboxradio("refresh");
+                disableAlarmByName(nameArrayElements[i], value);
             }else{
-                if(element.type == "checkbox"){
-                    //element.checked = value;
-                    $('#' + nameArrayElements[i]).prop("checked", value).checkboxradio("refresh");
-                    disableAlarmByName(nameArrayElements[i], value);
+                if(element.value == "true" || element.value == "false"){
+                    $('input[value=true][name=' + nameArrayElements[i] + ']').prop("checked", value);  // This should be the On button.
+                    $('input[value=false][name=' + nameArrayElements[i] + ']').prop("checked", !value);  // This should be the On button.
+                    $("input[type='radio']").checkboxradio("refresh");
                 }else{
-                    if(element.value == "true" || element.value == "false"){
-                        $('input[value=true][name=' + nameArrayElements[i] + ']').prop("checked", value);  // This should be the On button.
-                        $('input[value=false][name=' + nameArrayElements[i] + ']').prop("checked", !value);  // This should be the On button.
-                        $("input[type='radio']").checkboxradio("refresh");
-                    }else{
-                        element.value = value;
-                        if(element.type == 'number'){ // This is a slider. 
-                            $('#'+nameArrayElements[i]).slider('refresh');
-                        }
+                    element.value = value;
+                    if(element.type == 'number'){ // This is a slider. 
+                        $('#'+nameArrayElements[i]).slider('refresh');
                     }
-                }   
+                }
             }
         }, (errorObject) => {
             console.log('The read failed: ' + errorObject.name);
@@ -54,9 +67,8 @@ $(document).ready(function(){
 });
 
 function disableAlarmByName(name, checked){
-    if(checked) $('.timepicker[name=water_alarmtime_1]').parent().show('normal');
-    else $('.timepicker[name=water_alarmtime_1]').parent().hide('normal');
-    //el.parentNode.style.visibility = x.checked?"visible":"hidden";
+    if(checked) $('.timepicker[name=water_alarm_1]').parent().show('normal');
+    else $('.timepicker[name=water_alarm_1]').parent().hide('normal');
 }
 
 function sendToServer(x){

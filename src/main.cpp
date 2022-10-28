@@ -47,26 +47,26 @@ NTPClient timeClient(ntpUDP);
 
 uint16_t depositLevel = 10;
   
-double measureUltrasoundDistance() {
-  double distanceSum = 0;
+uint32_t measureUltrasoundDistance() {
+  uint32_t distanceSum = 0;
   digitalWrite(TRIGGER_PIN, LOW);
   delayMicroseconds(10);
 
-  for(int i = 0; i < ULTRASOUND_ITERATIONS; i++){
+  for(uint8_t i = 0; i < ULTRASOUND_ITERATIONS; i++){
     digitalWrite(TRIGGER_PIN, HIGH);
     delayMicroseconds(10);
     digitalWrite(TRIGGER_PIN, LOW);
       
-    double duration = pulseIn(ECHO_PIN, HIGH);
+    uint32_t duration = pulseIn(ECHO_PIN, HIGH);
     if(duration==0) return -1;
       
-    distanceSum += duration*SOUND_SPEED/2;
-    delay(1);
+    distanceSum += duration;
+    delay(20);
   }
   return distanceSum/ULTRASOUND_ITERATIONS;
 }
 
-uint16_t updateDepositLevel(){
+uint32_t updateDepositLevel(){
   static uint32_t lastTimeHere = millis();
 
   if(millis() - lastTimeHere < 2000) return depositLevel;
@@ -194,6 +194,12 @@ bool waterAlarmLock = false;
 uint16_t wateringAlarmDuration = 0; 
 
 void loop() {
+  String messageFromServer = firebase.getString("messages", "none");
+  if(messageFromServer == "update_deposit"){
+    updateDepositLevel();
+  }
+  firebase.setString("messages", "none");
+
   bool forceLightsOn = firebase.getBool("led/led", false);
   bool listenToPresenceSensor = firebase.getBool("led/presence", true);
   bool lightsOn = forceLightsOn || (presence.inputHigh() && listenToPresenceSensor);
@@ -248,14 +254,12 @@ void loop() {
 
   bool motorState = (startWateringIsValid || motorButton.inputHigh()) && updateDepositLevel()>10;
   if(motorState){
-    Serial.println("on");
     if(!motorsRunning){
       bootUpMotors();
       SU.log("Motors on");
       firebase.setString("water/now", "on");
     }
   }else{
-    Serial.println("off");
     if(motorsRunning){
       bootDownMotors();
       SU.log("Motors off");
