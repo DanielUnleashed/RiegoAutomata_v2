@@ -60,7 +60,8 @@
 		});
 		
 	    function changeHourVal(){
-			firebase.database().ref('water/alarmtime_1').set($('.timepicker').val());
+			setValueInServer('water/alarmtime_1', $('.timepicker').val());
+			//firebase.database().ref('water/alarmtime_1').set($('.timepicker').val());
 	    }
 
 		database.ref('water/alarmtime_1').on('value', (snapshot) => {
@@ -211,11 +212,11 @@
 					return;
 				}else $('button[name=water_waternow]').html("Comenzando el riego");
 			}
-			firebase.database().ref('water').child('now').set(message);
+			setValueInServer('water/now', message);
 		}
 
 		function updateDepositLevel(){
-			firebase.database().ref('messages').set("update_deposit");
+			setValueInServer('messages', 'update_deposit');
 		}
 
 		function changeWaterNowInterface(waterNow){

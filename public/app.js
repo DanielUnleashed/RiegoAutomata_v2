@@ -75,21 +75,27 @@ function sendToServer(x){
     var split = x.name.indexOf('_');
     var id1 = x.name.substring(0, split);
     var id2 = x.name.substring(split+1, x.name.length);
+    var serverDirection = id1+"/"+id2;
 
     if(x.value == ""){ // For single buttons
-        firebase.database().ref(id1).child(id2).set(x.name);
+        setValueInServer(serverDirection, x.name);
     }else{
         if(x.type == "checkbox"){
-            firebase.database().ref(id1).child(id2).set(x.checked);
+            setValueInServer(serverDirection, x.checked);
         }else{
             if(x.value == "true"){
-                console.log(x.name);
-                firebase.database().ref(id1).child(id2).set(true);
+                setValueInServer(serverDirection, true);
             }else if(x.value == "false"){
-                firebase.database().ref(id1).child(id2).set(false);
+                setValueInServer(serverDirection, false);
             }else{
-                firebase.database().ref(id1).child(id2).set(x.value);
+                if(x.type == "number") setValueInServer(serverDirection, parseInt(x.value));
+                else setValueInServer(serverDirection, x.value);
             }
         }   
     }
+}
+
+function setValueInServer(serverDirection, value){
+    firebase.database().ref("updateVariable").set(serverDirection);
+    firebase.database().ref(serverDirection).set(value);
 }

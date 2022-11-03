@@ -36,7 +36,7 @@
 #define BUTTON 25
 
 const char* ssid = "Aitina";
-const char* password = "270726VorGes_69*";
+const char* password = "270726VorGes_69#";
 
 #define LED_TIME 20*1000
 String ledMode = "Off";
@@ -46,7 +46,37 @@ WiFiUDP ntpUDP;
 NTPClient timeClient(ntpUDP);
 
 uint16_t depositLevel = 10;
-  
+
+#define DEPOSIT_LEVEL "deposit/level"
+
+#define LED_BRIGHTNESS "led/brightness"
+#define LED_LED "led/led"
+#define LED_MODE "led/mode"
+#define LED_PRESENCE "led/presence"
+
+#define WATER_ALARM_1 "water/alarm_1"
+#define WATER_ALARMTIME_1 "water/alarmtime_1"
+#define WATER_LASTWATERING "water/lastwatering"
+#define WATER_NOW "water/now"
+#define WATER_TIME "water/time"
+
+#define MESSAGES "messages"
+
+FirebaseVariable<int> deposit_level(DEPOSIT_LEVEL, 0);
+
+FirebaseVariable<int> led_brightness(LED_BRIGHTNESS, 100);
+FirebaseVariable<bool> led_led(LED_LED, true);
+FirebaseVariable<String> led_mode(LED_MODE, "Continuo");
+FirebaseVariable<bool> led_presence(LED_PRESENCE, true);
+
+FirebaseVariable<bool> water_alarm_1(WATER_ALARM_1, true);
+FirebaseVariable<String> water_alarmtime_1(WATER_ALARMTIME_1, "00:00");
+FirebaseVariable<String> water_lastwatering(WATER_LASTWATERING, "00:00");
+FirebaseVariable<String> water_now(WATER_NOW, "off");
+FirebaseVariable<int> water_time(WATER_TIME, 30);
+
+FirebaseVariable<String> messages(MESSAGES, "");
+
 uint32_t measureUltrasoundDistance() {
   uint32_t distanceSum = 0;
   digitalWrite(TRIGGER_PIN, LOW);
@@ -67,14 +97,14 @@ uint32_t measureUltrasoundDistance() {
 }
 
 uint32_t updateDepositLevel(){
-  static uint32_t lastTimeHere = millis();
+  static uint32_t lastTimeHere = 0;
 
   if(millis() - lastTimeHere < 2000) return depositLevel;
   else lastTimeHere = millis();
 
   depositLevel = measureUltrasoundDistance();
   Serial.printf("Deposit level: %d\n", depositLevel);
-  firebase.setInt("deposit/level", depositLevel);
+  deposit_level.setValue(depositLevel);
   return depositLevel;
 }
 
@@ -89,14 +119,138 @@ void bootUpMotors(){
   ledcWrite(2, 255);
   motorsRunning = true;
 }
-
 void bootDownMotors(){
   for(int dutyCycle = 255; dutyCycle >= 0; dutyCycle--){
     ledcWrite(1, dutyCycle);
     ledcWrite(2, dutyCycle); 
-    delay(15);
+    delay(4);
   }
   motorsRunning = false;
+}
+
+Input presence(PRESENCE_PIN, LED_TIME, false, 2000);
+Input motorButton(BUTTON, MOTOR_TIME, true, 500);
+bool lastLightsState = false;
+
+uint32_t startWateringTime = 0;
+bool startWateringLock = false;
+bool waterAlarmLock = false;
+uint16_t wateringAlarmDuration = 0; 
+
+uint8_t hourAlarm, minuteAlarm;
+
+void updateParameters(){
+  String messageFromServer = messages.getValue();
+  if(messageFromServer == "update_deposit"){
+    updateDepositLevel();
+  }
+  messages.setValue("none");
+
+  bool forceLightsOn = led_led.getValue();
+  bool lightsOn = forceLightsOn || (presence.inputHigh() && led_presence.getValue());
+  if(lightsOn){
+    bool printMessage = led_mode.hasNewValue || led_brightness.hasNewValue;
+    ledMode = led_mode.getValue();
+    ledBrightness = led_brightness.getValue()*2.55;
+    if(!lastLightsState || printMessage) SU.log("Lights on. Mode " + ledMode + " (" + String(ledBrightness) + ")");
+  }else{
+    ledMode = "Off";
+    if(lastLightsState) SU.log("Lights off");
+  }
+  lastLightsState = lightsOn;
+
+  // Water alarm
+  String wateringTimeAlarm = water_alarmtime_1.getValue();
+  bool waterAlarmStart = false;
+  if(wateringTimeAlarm != "" && water_alarm_1.getValue()){
+    uint8_t indexOfTwoDots = wateringTimeAlarm.indexOf(':');
+    hourAlarm = wateringTimeAlarm.substring(0, indexOfTwoDots).toInt();
+    minuteAlarm = wateringTimeAlarm.substring(indexOfTwoDots+1, wateringTimeAlarm.length()).toInt();
+    waterAlarmStart = timeClient.getHours()==hourAlarm && timeClient.getMinutes()==minuteAlarm;
+
+    // This lock is needed so the water alarm doesn't get triggered again in the same minute if the watering time is less than 60s.
+    if(waterAlarmLock && timeClient.getMinutes()!=minuteAlarm){
+      waterAlarmLock = false;
+    }
+  }
+
+  bool requestWatering = (waterAlarmStart && !waterAlarmLock) || water_now.getValue()=="go";
+
+  bool startWateringIsValid = false;
+  if(water_now.getValue() == "stop" || (requestWatering && updateDepositLevel()<10)){
+    wateringAlarmDuration = 0;
+    startWateringTime = 0;
+  }else{
+    if(!startWateringLock && requestWatering){ 
+      startWateringTime = millis();
+      wateringAlarmDuration = water_time.getValue();
+      water_lastwatering.setValue(timeClient.getFormattedTime());
+
+      startWateringLock = true;
+      if(waterAlarmStart) waterAlarmLock = true;
+    }
+    startWateringIsValid =  (startWateringTime + wateringAlarmDuration*1000) > millis();
+  }
+
+  // Finally release the lock when the time from the first button is pressed has passed.
+  if(!startWateringIsValid) startWateringLock = false;
+
+  bool motorState = (startWateringIsValid || motorButton.inputHigh()) && updateDepositLevel()>10;
+  if(motorState){
+    if(!motorsRunning){
+      bootUpMotors();
+      SU.log("Motors on");
+      water_now.setValue("on");
+    }
+  }else{
+    if(motorsRunning){
+      bootDownMotors();
+      SU.log("Motors off");
+      water_now.setValue("off");
+    }
+  }
+}
+
+void createAlarmTask(){
+  BaseType_t xReturn = xTaskCreate([](void* funcParams){
+    for(;;){
+      bool waterAlarmStart = timeClient.getHours()==hourAlarm && timeClient.getMinutes()==minuteAlarm;
+      if(waterAlarmStart){
+        updateParameters(); // Para comenzar el riego
+        delay((wateringAlarmDuration+1)*1000);
+        updateParameters(); // Para detener el riego
+      }else{
+        delay((60 - timeClient.getSeconds())*1000); // Wait for the next minute
+      }
+    }
+  }, "WaterAlarm Task", 5000, NULL, 1, NULL);
+  if(xReturn != pdTRUE) Serial.println("Couldn't create WaterAlarm Task!");
+}
+
+void createLEDTask(){
+  BaseType_t xReturn = xTaskCreatePinnedToCore([](void *funcParams){
+    for(;;){
+      if(ledMode == "Continuo"){
+        ledcWrite(0, ledBrightness);
+      }else if(ledMode == "Seno"){
+        double omega = map(ledBrightness, 0, 255, 0, TWO_PI*2);
+        ledcWrite(0, (uint32_t) (128.0*(1.0 + sin(omega*(millis()/1000.0)))) );
+      }else if(ledMode == "Parpadeo"){
+        double omega = map(ledBrightness, 0, 255, 0, TWO_PI*2);
+        ledcWrite(0, (sin(omega*millis()/1000.0)>0)?255:0);
+      }else{
+        ledcWrite(0,0);
+      }
+
+      if(motorsRunning){
+        digitalWrite(DEPOSIT_LED, HIGH);
+      }else{
+        digitalWrite(DEPOSIT_LED, LOW);
+      }
+      delay(34);
+    }
+  }, "LedTask", 4000, NULL, 1, NULL, 0);
+  if(xReturn != pdTRUE) Serial.println("Couldn't create LedTask!");
 }
 
 void setup() {
@@ -126,10 +280,11 @@ void setup() {
   Serial.println(WiFi.localIP());
 
   timeClient.begin();
-  timeClient.setTimeOffset(3600*2); // GMT+2 Horario de verano, GMT+1 Horario de invierno
+  timeClient.setTimeOffset(3600); // GMT+2 Horario de verano, GMT+1 Horario de invierno
 
   // Sketch Uploader
   SU.startServer(&timeClient);
+  
   firebase.startFirebase();
 
   pinMode(PRESENCE_PIN, INPUT);
@@ -151,121 +306,14 @@ void setup() {
   ledcSetup(2, 5000, 8);
   ledcAttachPin(MOTOR_B_PWM, 2);
 
-  xTaskCreatePinnedToCore([](void *funcParams){
-    for(;;){
-      if(ledMode == "Continuo"){
-        ledcWrite(0, ledBrightness);
-      }else if(ledMode == "Seno"){
-        double omega = map(ledBrightness, 0, 255, 0, TWO_PI*30);
-        ledcWrite(0, 128*(1 + sin(omega*millis()/1000.0)));
-      }else if(ledMode == "Parpadeo"){
-        double omega = map(ledBrightness, 0, 255, 0, TWO_PI*30);
-        ledcWrite(0, (sin(omega*millis()/1000.0)>0)?255:0);
-      }else{
-        ledcWrite(0,0);
-      }
-
-      if(motorsRunning){
-        digitalWrite(DEPOSIT_LED, HIGH);
-      }else{
-        digitalWrite(DEPOSIT_LED, LOW);
-      }
-      delay(34); // 1/30 Hz
-    }
-  }, "LedTask", 2000, NULL, 1, NULL, 0);
-
-  SU.log("Alarm1: " + String(firebase.getBool("water/alarm_1", false)));
-  SU.log("Alarm1_time: " + firebase.getString("water/alarmtime_1", ""));
-  SU.log("Last watering time: " + firebase.getString("water/lastwatering", ""));
-  SU.log("Led brightness " + String(firebase.getInt("led/brightness", 100)));
+  createLEDTask();
+  createAlarmTask();
 
   updateDepositLevel();
 
   firebase.setString("water/now", "off");
 }
 
-Input presence(PRESENCE_PIN, LED_TIME, false, 2000);
-Input motorButton(BUTTON, MOTOR_TIME, true, 500);
-bool lastLightsState = false;
-
-uint32_t startWateringTime = 0;
-bool startWateringLock = false;
-bool waterAlarmLock = false;
-uint16_t wateringAlarmDuration = 0; 
-
 void loop() {
-  String messageFromServer = firebase.getString("messages", "none");
-  if(messageFromServer == "update_deposit"){
-    updateDepositLevel();
-  }
-  firebase.setString("messages", "none");
-
-  bool forceLightsOn = firebase.getBool("led/led", false);
-  bool listenToPresenceSensor = firebase.getBool("led/presence", true);
-  bool lightsOn = forceLightsOn || (presence.inputHigh() && listenToPresenceSensor);
-  if(lightsOn){
-    ledMode = firebase.getString("led/mode", "Off");
-    ledBrightness = firebase.getInt("led/brightness", 100)*2.55;
-    if(!lastLightsState) SU.log("Lights on. Mode " + ledMode + " (" + String(ledBrightness) + ")");
-  }else{
-    if(lastLightsState) SU.log("Lights off");
-    ledMode = "Off";
-  }
-  lastLightsState = lightsOn;
-
-  // Water now button inside webpage. "go" message means start watering now!
-  String waterNowString = firebase.getString("water/now", "off");
-  
-  // Water alarm
-  String wateringTimeAlarm = firebase.getString("water/alarmtime_1", "");
-  bool waterAlarmStart = false;
-  if(wateringTimeAlarm != "" && firebase.getBool("water/alarm_1", true)){
-    uint8_t indexOfTwoDots = wateringTimeAlarm.indexOf(':');
-    uint8_t hourAlarm = wateringTimeAlarm.substring(0, indexOfTwoDots).toInt();
-    uint8_t minuteAlarm = wateringTimeAlarm.substring(indexOfTwoDots+1, wateringTimeAlarm.length()).toInt();
-    waterAlarmStart = timeClient.getHours()==hourAlarm && timeClient.getMinutes()==minuteAlarm;
-
-    // This lock is needed so the water alarm doesn't get triggered again in the same minute if the watering time is less than 60s.
-    if(waterAlarmLock && timeClient.getMinutes()!=minuteAlarm){
-      waterAlarmLock = false;
-    }
-  }
-
-  bool requestWatering = (waterAlarmStart && !waterAlarmLock) || waterNowString=="go";
-
-  bool startWateringIsValid = false;
-  if(waterNowString == "stop" || (requestWatering && updateDepositLevel()<10)){
-    wateringAlarmDuration = 0;
-    startWateringTime = 0;
-  }else{
-    if(!startWateringLock && requestWatering){ 
-      startWateringTime = millis();
-      wateringAlarmDuration = firebase.getInt("water/time", 10) * 1000; // Default watering time: 10 seconds?
-      firebase.setString("water/lastwatering", timeClient.getFormattedTime(), true);
-
-      startWateringLock = true;
-      if(waterAlarmStart) waterAlarmLock = true;
-    }
-    startWateringIsValid =  (startWateringTime + wateringAlarmDuration) > millis();
-  }
-
-  // Finally release the lock when the time from the first button is pressed has passed.
-  if(!startWateringIsValid) startWateringLock = false;
-
-  bool motorState = (startWateringIsValid || motorButton.inputHigh()) && updateDepositLevel()>10;
-  if(motorState){
-    if(!motorsRunning){
-      bootUpMotors();
-      SU.log("Motors on");
-      firebase.setString("water/now", "on");
-    }
-  }else{
-    if(motorsRunning){
-      bootDownMotors();
-      SU.log("Motors off");
-      firebase.setString("water/now", "off");
-    }
-  }
-
-  delay(1000);
+  firebase.updateFirebase(updateParameters);
 }
