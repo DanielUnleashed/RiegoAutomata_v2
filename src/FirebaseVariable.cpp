@@ -40,6 +40,13 @@ void FirebaseVariable<String>::setValue(String v){
 }
 
 template <>
+void FirebaseVariable<double>::setValue(double v){
+    if(v == this->value) return;
+    this->updateValue(v);
+    firebase.setDouble(serverDirection, v);
+}
+
+template <>
 void FirebaseVariable<int>::updateValue(){
     this->value = firebase.getInt(serverDirection, defaultValue);
     this->hasNewValue = true;
@@ -53,6 +60,11 @@ void FirebaseVariable<bool>::updateValue(){
 template <>
 void FirebaseVariable<String>::updateValue(){
     this->value = firebase.getString(serverDirection, defaultValue);
+}
+
+template <>
+void FirebaseVariable<double>::updateValue(){
+    this->value = firebase.getDouble(serverDirection, defaultValue);
 }
 
 template <typename Type> void FirebaseVariable<Type>::setValue(Type v){
@@ -88,3 +100,4 @@ template <typename Type> void FirebaseVariable<Type>::linkAllVariables(){
 template class FirebaseVariable<bool>;
 template class FirebaseVariable<int>;
 template class FirebaseVariable<String>;
+template class FirebaseVariable<double>;

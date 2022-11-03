@@ -1,4 +1,4 @@
-var nameArrayElements = ['led_led', 'led_presence', 'led_brightness', 'led_mode', 'water_wateringinfo', 'water_lastwatering', 'water_time', 'water_alarm_1', 'deposit_level'];
+var nameArrayElements = ['led_led', 'led_presence', 'led_brightness', 'led_mode', 'water_wateringinfo', 'water_lastwatering', 'water_time', 'water_alarm_1'];
 
 $(document).ready(function(){
     database.ref('water/now').on('value', (snapshot) => {
@@ -13,8 +13,10 @@ $(document).ready(function(){
     });
 
     database.ref('deposit/level').on('value', (snapshot) => {
-        let value = snapshot.val();
-        $('#span[name=deposit_level]').html(value);
+        let value = +snapshot.val();
+        $('#span[name=deposit_level]').html(value.toFixed(2));
+        let liters = value*28.5/100;
+        $('#span[name=deposit_level_liters]').html(liters.toFixed(2));
         if(value > 10){
             $('#span[name=deposit_level]').css('background', 'none');
         }else{

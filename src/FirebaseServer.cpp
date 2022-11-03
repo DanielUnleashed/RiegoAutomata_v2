@@ -140,6 +140,38 @@ bool FirebaseServer::setString(String path, String value, bool waitForResponse){
     return ok;
 }
 
+double FirebaseServer::getDouble(String path, double outputIfError, bool waitForResponse){
+    bool ok = false;
+    if(!checkConnection(waitForResponse, ok)) return outputIfError;
+    if(Firebase.RTDB.getDouble(&fbdo, path)){
+        ok = true;
+        return fbdo.doubleData();
+    }else{
+        String mssg = "Fail to fetch string to " +  path + " (" + fbdo.errorReason() + ")";
+        Serial.println(mssg);
+        //SU.log(mssg);
+        ok = false;
+    }
+    return outputIfError;
+}
+
+bool FirebaseServer::setDouble(String path, double value, bool waitForResponse){
+    bool ok = false;
+    if(!checkConnection(waitForResponse, ok)){
+        Serial.println("Couldn't check connection on setString()");
+        return ok;
+    }
+    if(Firebase.RTDB.setDouble(&fbdo, path, value)){
+        ok = true;
+    }else{
+        String mssg = "Fail to send " + String(value) + " to " +  path + " (" + fbdo.errorReason() + ")";
+        Serial.println(mssg);
+        //SU.log(mssg);
+        ok = false;
+    }
+    return ok;
+}
+
 bool FirebaseServer::updateVariable(String path){
     bool ok = false;
     if(!checkConnection(true, ok)) return ok;

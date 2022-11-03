@@ -45,7 +45,7 @@ uint8_t ledBrightness = 255;
 WiFiUDP ntpUDP;
 NTPClient timeClient(ntpUDP);
 
-uint16_t depositLevel = 10;
+double depositLevel = 0.0;
 
 #define DEPOSIT_LEVEL "deposit/level"
 
@@ -62,7 +62,7 @@ uint16_t depositLevel = 10;
 
 #define MESSAGES "messages"
 
-FirebaseVariable<int> deposit_level(DEPOSIT_LEVEL, 0);
+FirebaseVariable<double> deposit_level(DEPOSIT_LEVEL, 0);
 
 FirebaseVariable<int> led_brightness(LED_BRIGHTNESS, 100);
 FirebaseVariable<bool> led_led(LED_LED, true);
@@ -96,13 +96,13 @@ uint32_t measureUltrasoundDistance() {
   return distanceSum/ULTRASOUND_ITERATIONS;
 }
 
-uint32_t updateDepositLevel(){
+double updateDepositLevel(){
   static uint32_t lastTimeHere = 0;
 
   if(millis() - lastTimeHere < 2000) return depositLevel;
   else lastTimeHere = millis();
 
-  depositLevel = measureUltrasoundDistance();
+  depositLevel = 137.06572 - measureUltrasoundDistance()*0.04639;
   Serial.printf("Deposit level: %d\n", depositLevel);
   deposit_level.setValue(depositLevel);
   return depositLevel;
@@ -177,7 +177,7 @@ void updateParameters(){
   bool requestWatering = (waterAlarmStart && !waterAlarmLock) || water_now.getValue()=="go";
 
   bool startWateringIsValid = false;
-  if(water_now.getValue() == "stop" || (requestWatering && updateDepositLevel()<10)){
+  if(water_now.getValue() == "stop" || (requestWatering && updateDepositLevel()<10.0)){
     wateringAlarmDuration = 0;
     startWateringTime = 0;
   }else{

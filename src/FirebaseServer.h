@@ -39,6 +39,9 @@ class FirebaseServer {
     String getString(String path, String outputIfError, bool waitForResponse=false);
     bool setString(String path, String value, bool waitForResponse=false);
 
+    double getDouble(String path, double outputIfError, bool waitForResponse=false);
+    bool setDouble(String path, double value, bool waitForResponse=false);
+
     bool updateVariable(String path);
 
     private:
