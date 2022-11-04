@@ -1,6 +1,16 @@
 var nameArrayElements = ['led_led', 'led_presence', 'led_brightness', 'led_mode', 'water_wateringinfo', 'water_lastwatering', 'water_time', 'water_alarm_1'];
 
-$(document).ready(function(){
+const setupUI = (user) => {
+    if(!user) return;
+
+    $("#user-details").html(user.email);
+
+    $("#login-form").hide(400, function(){
+        $("#username_header").show(400);
+        $("#main_page").show(400);
+    });
+    
+
     database.ref('water/now').on('value', (snapshot) => {
         let value = snapshot.val();
         if(value == 'on'){
@@ -66,7 +76,7 @@ $(document).ready(function(){
             console.log('The read failed: ' + errorObject.name);
         });
     }
-});
+};
 
 function disableAlarmByName(name, checked){
     if(checked) $('.timepicker[name=water_alarm_1]').parent().show('normal');

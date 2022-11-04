@@ -8,26 +8,36 @@ void FirebaseServer::startFirebase(){
     config.api_key = API_KEY;
     config.database_url = DATABASE_URL;
 
-    if(Firebase.signUp(&config, &auth, "", "")){
-        Serial.println("User entered");
-        signUp = true;
-    }else{
-        Serial.printf("%s\n", config.signer.signupError.message.c_str());
-    }
+    auth.user.email = USER_EMAIL;
+    auth.user.password = USER_PASSWORD;
+
+    Firebase.reconnectWiFi(true);
+    fbdo.setResponseSize(4096);
 
     config.token_status_callback = tokenStatusCallback;
+    config.max_token_generation_retry = 5;
 
     Firebase.begin(&config, &auth);
-    Firebase.reconnectWiFi(true);
+
+    Serial.print("Getting user token");
+    while(auth.token.uid == ""){
+        Serial.print(".");
+        delay(1000);
+    }
+
+    this->userID = auth.token.uid.c_str();
+    Serial.printf(" TOKEN: %s\n", this->userID.c_str());
 
     FirebaseVariable<int>::linkAllVariables();
     FirebaseVariable<bool>::linkAllVariables();
     FirebaseVariable<String>::linkAllVariables();
 
-    SU.log("Firebase ready!");
+    SU.log("Firebase ready! User ID: " + this->userID);
 }
 
 void FirebaseServer::updateFirebase(std::function<void(void)> func){
+    if(Firebase.isTokenExpired()) Firebase.refreshToken(&config);
+
     static int lastReadings = 0;
     static bool isSleeping = false;
 
@@ -206,8 +216,7 @@ bool FirebaseServer::checkConnection(bool waitForResponse, bool &ok){
         delay(timeNow-lastTimeConnection);
         timeIntervalLongEnough = true;
     }*/
-    bool ans = Firebase.ready() && signUp/* && timeIntervalLongEnough*/;
-    ok = ans;
+    ok = Firebase.ready()/* && timeIntervalLongEnough*/;
     //if(ans) lastTimeConnection = timeNow;
-    return ans;
+    return ok;
 }

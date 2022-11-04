@@ -17,11 +17,11 @@
 #define DATABASE_URL "https://riego-automata-default-rtdb.europe-west1.firebasedatabase.app/"
 
 #define USER_EMAIL "dbejarcaballero@gmail.com"
-#define USER_PASSWORD "D4ni31 B3j4r."
+#define USER_PASSWORD "D4ni31"
 
-#define TIME_BETWEEN_CHECKS 1500
+#define TIME_BETWEEN_CHECKS 1000
 #define TIME_BETWEEN_CHECKS_SLEEP 5000
-#define SLEEP_TIME 5*60*1000 // Time since last connection that will make the task enter sleep mode
+#define SLEEP_TIME 3*60*1000 // Time since last connection that will make the task enter sleep mode
 
 class FirebaseServer {
 
@@ -49,7 +49,7 @@ class FirebaseServer {
     FirebaseAuth auth;
     FirebaseConfig config;
 
-    bool signUp = false;
+    String userID = "";
 
     uint32_t lastTimeConnection = 0;
     bool checkConnection(bool waitForResponse, bool &ok);
