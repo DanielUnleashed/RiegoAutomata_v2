@@ -32,6 +32,9 @@ const setupUI = (user) => {
         }else{
             $('#span[name=deposit_level]').css('background', 'red');
         }
+        var gauge = createDepositGauge();
+        gauge.draw();
+        gauge.value = value;
     }, (errorObject) => {
         console.log('The read failed: ' + errorObject.name);
     });
