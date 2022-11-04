@@ -4,3 +4,10 @@
     margin: 0 auto;
 }
 
+#user-details{
+    color: cadetblue;
+}
+
+#username_header{
+    text-align:center;
+}

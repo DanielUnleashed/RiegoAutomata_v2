@@ -280,7 +280,7 @@ void setup() {
   Serial.println(WiFi.localIP());
 
   timeClient.begin();
-  timeClient.setTimeOffset(3600); // GMT+2 Horario de verano, GMT+1 Horario de invierno
+  timeClient.setTimeOffset(3600); // GMT+1 Horario de invierno
 
   // Sketch Uploader
   SU.startServer(&timeClient);
@@ -316,4 +316,7 @@ void setup() {
 
 void loop() {
   firebase.updateFirebase(updateParameters);
+
+  // This is the only signal that doesn't come from the server.
+  if(motorButton.inputHigh()) updateParameters();
 }

@@ -5,48 +5,49 @@
 	<meta name="viewport" content="width=device-width, initial-scale=1">
 	<title>Riego Automata</title>
 
-  <!-- The core Firebase JS SDK is always required and must be listed first -->
-  <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+	<!-- The core Firebase JS SDK is always required and must be listed first -->
+	<script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
 
-  <!-- TODO: Add SDKs for Firebase products that you want to use
-      https://firebase.google.com/docs/web/setup#available-libraries -->
+	<!-- TODO: Add SDKs for Firebase products that you want to use
+		https://firebase.google.com/docs/web/setup#available-libraries -->
 	<script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js"></script>
-  	<script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
+	<script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
 
-  <script>
-    var firebaseConfig = {
-      apiKey: "AIzaSyDSoplVaOu7G2scs2VRdsy-WdoT7sespDk",
-      authDomain: "riego-automata.firebaseapp.com",
-      databaseURL: "https://riego-automata-default-rtdb.europe-west1.firebasedatabase.app",
-      projectId: "riego-automata",
-      storageBucket: "riego-automata.appspot.com",
-      messagingSenderId: "241264727623",
-      appId: "1:241264727623:web:c8c5d0fb7c396437a48362"
-    };
-    firebase.initializeApp(firebaseConfig);
-    const database = firebase.database();
+	<script>
+	var firebaseConfig = {
+		apiKey: "AIzaSyDSoplVaOu7G2scs2VRdsy-WdoT7sespDk",
+		authDomain: "riego-automata.firebaseapp.com",
+		databaseURL: "https://riego-automata-default-rtdb.europe-west1.firebasedatabase.app",
+		projectId: "riego-automata",
+		storageBucket: "riego-automata.appspot.com",
+		messagingSenderId: "241264727623",
+		appId: "1:241264727623:web:c8c5d0fb7c396437a48362"
+	};
+	firebase.initializeApp(firebaseConfig);
+	const database = firebase.database();
 	const auth = firebase.auth();
-  </script>
+	</script>
 
-  <script src="scripts/app.js" defer></script>
-  <script src="scripts/login.js" defer></script>
+	<!-- Own /scripts scripts -->
+	<script src="scripts/app.js" defer></script>
+	<script src="scripts/login.js" defer></script>
+	<script src="scripts/gauges.js" defer></script>
 
 	<link rel="stylesheet" href="style.css" />
 
-	
 	<link rel="stylesheet" href="https://code.jquery.com/mobile/1.4.5/jquery.mobile-1.4.5.min.css" />
 	<link rel="stylesheet" href="https://code.jquery.com/mobile/1.4.5/jquery.mobile.structure-1.4.5.min.css" />
 
 	<script src="https://code.jquery.com/jquery-1.11.1.min.js"></script>
-	
 	<script src="https://code.jquery.com/mobile/1.4.5/jquery.mobile-1.4.5.min.js"></script>
 
 	<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/timepicker/1.3.5/jquery.timepicker.min.css">
 	<script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/timepicker/1.3.5/jquery.timepicker.min.js"></script>
 
+	<script src="https://cdn.rawgit.com/Mikhus/canvas-gauges/gh-pages/download/2.1.7/all/gauge.min.js"></script>
 
 	<script>
-	    $(function() {
+		$(function() {
 			$('.timepicker').timepicker({
 				timeFormat: 'H:mm',
 				interval: 30,
@@ -65,18 +66,18 @@
 			});
 		});
 		
-	    function changeHourVal(){
+		function changeHourVal(){
 			setValueInServer('water/alarmtime_1', $('.timepicker').val());
 			//firebase.database().ref('water/alarmtime_1').set($('.timepicker').val());
-	    }
+		}
 
 		database.ref('water/alarmtime_1').on('value', (snapshot) => {
-            let v = snapshot.val();
+			let v = snapshot.val();
 			$('.timepicker').timepicker('setTime', v);
 			//console.log(v);
-        }, (errorObject) => {
-            console.log('The read failed: ' + errorObject.name);
-        });
+		}, (errorObject) => {
+			console.log('The read failed: ' + errorObject.name);
+		});
 	</script>
 
 </head>
@@ -84,15 +85,15 @@
 <body>
 	<div data-role="header" data-position="inline">
 		<h1>Riego Automata_v2</h1>
-	</div>
 
-	<!-- Nombre de usuario al principio de la página -->
-	<div id="username_header" style="display: none;">
-		<p>
-			<span id="authentication-status">Usuario:</span>
-			<span id="user-details">USEREMAIL</span>
-			<a href="/" id="logout-link">(logout)</a>
-		</p>
+		<!-- Nombre de usuario al principio de la página -->
+		<div id="username_header" style="display: none;">
+			<p style="margin: 0; margin-bottom: 10px;">
+				<span id="authentication-status">Usuario:</span>
+				<span id="user-details">USEREMAIL</span>
+				<a href="/" id="logout-link">(logout)</a>
+			</p>
+		</div>
 	</div>
 
 	<!-- Formulario de login -->
@@ -114,7 +115,6 @@
 		<div data-form="ui-body-a">
 			<p style="text-align:center">Hora actual: <span id="hour-span"></span></p>
 		</div>
-		
 
 		<ul data-role="listview" data-inset="true">
             <li data-role="list-divider" data-theme="a" data-swatch="a" data-form="ui-bar-a" role="heading">Iluminación</li>
@@ -204,7 +204,8 @@
 					<label style="width: fit-content;">Nivel del depósito: <span name="deposit_level" id="span"></span> % (<span name="deposit_level_liters" id="span"></span> L)</label>
 						<button data-iconpos="left" data-mini="true" data-inline="true" data-icon="refresh" data-theme="a" data-form="ui-btn-up-a" onclick="updateDepositLevel()">Actualizar</button>
 				</div>
-            </li>
+				<canvas id="gauge-deposit"></canvas>
+			</li>
 		</ul>
 
 		<!--
