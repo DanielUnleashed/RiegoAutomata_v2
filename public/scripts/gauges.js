@@ -23,15 +23,15 @@ function createDepositGauge(){
         strokeTicks: true,
         highlights: [
             {
-                "from": 80,
-                "to": 100,
+                "from": 0,
+                "to": 10,
                 "color": "#03C0C1"
             }
         ],
         colorPlate: "#fff",
         borderShadowWidth: 0,
         borders: false,
-        needleType: "line",
+        needleType: "arrow",
         colorNeedle: "#007F80",
         colorNeedleEnd: "#007F80",
         needleWidth: 2,

@@ -1,7 +1,4 @@
-var nameArrayElements = ['led_led', 'led_brightness', 'led_mode', 'water_wateringinfo', 'water_lastwatering', 'water_time', 'water_alarm_1'];
-
-// Stores if the endpoint (the watering system) is online
-let systemOnline = true;
+var nameArrayElements = ['led_led', 'led_presence', 'led_brightness', 'led_mode', 'water_wateringinfo', 'water_lastwatering', 'water_time', 'water_alarm_1'];
 
 const setupUI = (user) => {
     if(!user) return;
@@ -12,6 +9,7 @@ const setupUI = (user) => {
         $("#username_header").show(400);
         $("#main_page").show(400);
     });
+    
 
     database.ref('water/now').on('value', (snapshot) => {
         let value = snapshot.val();
@@ -19,20 +17,6 @@ const setupUI = (user) => {
             changeWaterNowInterface(true);
         }else if(value == 'off'){
             changeWaterNowInterface(false);
-        }
-    }, (errorObject) => {
-        console.log('The read failed: ' + errorObject.name);
-    });
-
-    database.ref('led/presence').on('value', (snapshot) => {
-        let value = snapshot.val();
-        $('input[value=true][name=led_presence]').prop("checked", value);  // This should be the On button.
-        $('input[value=false][name=led_presence]').prop("checked", !value);  // This should be the On button.
-        $("input[type='radio']").checkboxradio("refresh");
-        if(value){
-            $('#led_presencetime_div').show(400);
-        }else{
-            $('#led_presencetime_div').hide(400);
         }
     }, (errorObject) => {
         console.log('The read failed: ' + errorObject.name);
@@ -51,27 +35,6 @@ const setupUI = (user) => {
         var gauge = createDepositGauge();
         gauge.draw();
         gauge.value = value;
-    }, (errorObject) => {
-        console.log('The read failed: ' + errorObject.name);
-    });
-
-    database.ref('messages').on('value', (snapshot) => {
-        let value = snapshot.val();
-        if(value == 'im_online'){
-            systemOnline = true;
-            database.ref('messages').set("none");
-        }
-    }, (errorObject) => {
-        console.log('The read failed: ' + errorObject.name);
-    });
-
-    database.ref('led/presencereading').on('value', (snapshot) => {
-        let value = snapshot.val();
-        if(value){
-            $("#presence_sensor_dot").attr("value", "on");
-        }else{
-            $("#presence_sensor_dot").attr("value", "off");
-        }
     }, (errorObject) => {
         console.log('The read failed: ' + errorObject.name);
     });
@@ -148,23 +111,6 @@ function sendToServer(x){
 }
 
 function setValueInServer(serverDirection, value){
-    database.ref("updateVariable").set(serverDirection);
-    database.ref(serverDirection).set(value);
+    firebase.database().ref("updateVariable").set(serverDirection);
+    firebase.database().ref(serverDirection).set(value);
 }
-
-function pollSystemStatus(){
-    systemOnline = false;
-    database.ref("updateVariable").set("you_online");
-    setTimeout(() => {
-        if(systemOnline){
-            $("#riego_online_dot").attr("value", "on");
-            $("#riego_online").html("ONLINE");
-        }else{
-            $("#riego_online_dot").attr("value", "off");
-            $("#riego_online").html("OFFLINE");
-        }
-        database.ref("updateVariable").set("none");
-    }, 5000);
-}
-pollSystemStatus();
-setInterval(pollSystemStatus, 10000);
