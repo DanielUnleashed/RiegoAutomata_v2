@@ -14,6 +14,9 @@ class Input {
     bool inputPressed();
     bool inputHigh();
 
+    uint32_t validationTime;
+    uint32_t delayTime;
+
     private:
     uint8_t pin;
     uint32_t startPressTime = 0;    // Time when first detected input (LOW to HIGH)
@@ -23,9 +26,6 @@ class Input {
     bool isHigh = false;            // True when pressed and during delay time.
 
     bool biestableInput = false;    // If pressed again and has delay, it will turn off.
-
-    uint32_t validationTime;
-    uint32_t delayTime;
 
     void fetchInput();
 

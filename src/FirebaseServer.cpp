@@ -41,9 +41,15 @@ void FirebaseServer::updateFirebase(std::function<void(void)> func){
     static int lastReadings = 0;
     static bool isSleeping = false;
 
-    String variableChanged = firebase.getString("updateVariable", "none");
-    if(variableChanged != "none"){
-        firebase.updateVariable(variableChanged);
+    String updateVariable = firebase.getString("updateVariable", "none");
+    if(updateVariable != "none"){
+        if(updateVariable == "you_online"){
+            firebase.setString("messages", "im_online");
+            firebase.setString("updateVariable", "none");
+            return;
+        }
+
+        firebase.updateVariable(updateVariable);
         func();
         lastReadings = 0;
     }else{

@@ -53,6 +53,8 @@ double depositLevel = 0.0;
 #define LED_LED "led/led"
 #define LED_MODE "led/mode"
 #define LED_PRESENCE "led/presence"
+#define LED_PRESENCEREADING "led/presencereading"
+#define LED_PRESENCETIME "led/presencetime"
 
 #define WATER_ALARM_1 "water/alarm_1"
 #define WATER_ALARMTIME_1 "water/alarmtime_1"
@@ -68,6 +70,8 @@ FirebaseVariable<int> led_brightness(LED_BRIGHTNESS, 100);
 FirebaseVariable<bool> led_led(LED_LED, true);
 FirebaseVariable<String> led_mode(LED_MODE, "Continuo");
 FirebaseVariable<bool> led_presence(LED_PRESENCE, true);
+FirebaseVariable<bool> led_presencereading(LED_PRESENCEREADING, false);
+FirebaseVariable<int> led_presencetime(LED_PRESENCETIME, 10);
 
 FirebaseVariable<bool> water_alarm_1(WATER_ALARM_1, true);
 FirebaseVariable<String> water_alarmtime_1(WATER_ALARMTIME_1, "00:00");
@@ -147,7 +151,8 @@ void updateParameters(){
   messages.setValue("none");
 
   bool forceLightsOn = led_led.getValue();
-  bool lightsOn = forceLightsOn || (presence.inputHigh() && led_presence.getValue());
+  bool lightsOn = forceLightsOn;
+  presence.delayTime = led_presencetime.getValue()*1000;
   if(lightsOn){
     bool printMessage = led_mode.hasNewValue || led_brightness.hasNewValue;
     ledMode = led_mode.getValue();
@@ -158,6 +163,7 @@ void updateParameters(){
     if(lastLightsState) SU.log("Lights off");
   }
   lastLightsState = lightsOn;
+
 
   // Water alarm
   String wateringTimeAlarm = water_alarmtime_1.getValue();
@@ -230,7 +236,7 @@ void createAlarmTask(){
 void createLEDTask(){
   BaseType_t xReturn = xTaskCreatePinnedToCore([](void *funcParams){
     for(;;){
-      if(ledMode == "Continuo"){
+      if(ledMode == "Continuo" || presence.inputHigh() && led_presence.getValue()){
         ledcWrite(0, ledBrightness);
       }else if(ledMode == "Seno"){
         double omega = map(ledBrightness, 0, 255, 0, TWO_PI*2);
@@ -241,6 +247,8 @@ void createLEDTask(){
       }else{
         ledcWrite(0,0);
       }
+
+      led_presencereading.setValue(presence.inputPressed());
 
       if(motorsRunning){
         digitalWrite(DEPOSIT_LED, HIGH);

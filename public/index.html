@@ -114,6 +114,7 @@
 	<div data-theme="a" role="main" class="ui-content" style="display: none;" id="main_page">
 		<div data-form="ui-body-a">
 			<p style="text-align:center">Hora actual: <span id="hour-span"></span></p>
+			<p style="text-align:center">Sistema de riego: <span class="dot" id="riego_online_dot" value="on"></span><span id="riego_online">ONLINE</span></p>
 		</div>
 
 		<ul data-role="listview" data-inset="true">
@@ -132,7 +133,7 @@
 
             <li data-form="ui-body-a" data-swatch="a" data-theme="a">
               <div data-role="fieldcontain" > 
-                <label style="width: 30%;" for="led_presence">Sensor de presencia:</label>
+                <label style="width: 30%;" for="led_presence">Sensor de presencia: <span class="dot" id="presence_sensor_dot" value="on"></span></label>
                 <fieldset style="float: left; width: 40%;" data-role="controlgroup"  data-type="horizontal" data-role="fieldcontain">
                   <input type="radio" name="led_presence" id="radio-choice-a2" value="true" onclick="sendToServer(this)"/>
                   <label for="radio-choice-a2">On</label>
@@ -140,6 +141,11 @@
                   <label for="radio-choice-b2">Off</label>
                 </fieldset>
               </div>
+
+			  <div data-role="fieldcontain" id="led_presencetime_div">
+				<label for="led_presencetime">Tiempo encendido (s):</label>
+				<input type=range name="led_presencetime" id="led_presencetime" value="100" min="0" max="180" data-theme="a" onchange="sendToServer(this)"/>
+			</div>
               </li>
             
             <li data-form="ui-body-a" data-swatch="a" data-theme="a">

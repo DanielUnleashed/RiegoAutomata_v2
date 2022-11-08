@@ -11,3 +11,22 @@
 #username_header{
     text-align:center;
 }
+
+.dot {
+    height: 10px;
+    width: 10px;
+    border-radius: 50%;
+    display: inline-block;
+    margin: auto 5px;
+    text-align:center;
+    background-color: #bbb;
+}
+
+.dot[value="on"]{
+    background-color: rgb(20, 187, 48);
+}
+
+.dot[value="off"]{
+    background-color: rgb(238, 59, 59);
+}
+

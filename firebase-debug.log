@@ -1,0 +1,14 @@
+[debug] [2022-11-08T16:35:37.732Z] ----------------------------------------------------------------------
+[debug] [2022-11-08T16:35:37.734Z] Command:       C:\Program Files\nodejs\node.exe C:\Users\Daniel\AppData\Roaming\npm\node_modules\firebase-tools\lib\bin\firebase.js deploy
+[debug] [2022-11-08T16:35:37.735Z] CLI Version:   11.16.0
+[debug] [2022-11-08T16:35:37.735Z] Platform:      win32
+[debug] [2022-11-08T16:35:37.735Z] Node Version:  v16.18.0
+[debug] [2022-11-08T16:35:37.736Z] Time:          Tue Nov 08 2022 17:35:37 GMT+0100 (hora estándar de Europa central)
+[debug] [2022-11-08T16:35:37.736Z] ----------------------------------------------------------------------
+[debug] 
+[debug] [2022-11-08T16:35:37.821Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform"]
+[debug] [2022-11-08T16:35:37.821Z] > authorizing via signed-in user (dbejarcaballero@gmail.com)
+[debug] [2022-11-08T16:35:37.822Z] [iam] checking project riego-automata for permissions ["firebase.projects.get","firebasedatabase.instances.update","firebasehosting.sites.update"]
+[debug] [2022-11-08T16:35:37.828Z] >>> [apiv2][query] POST https://cloudresourcemanager.googleapis.com/v1/projects/riego-automata:testIamPermissions [none]
+[debug] [2022-11-08T16:35:37.828Z] >>> [apiv2][(partial)header] POST https://cloudresourcemanager.googleapis.com/v1/projects/riego-automata:testIamPermissions x-goog-quota-user=projects/riego-automata
+[debug] [2022-11-08T16:35:37.828Z] >>> [apiv2][body] POST https://cloudresourcemanager.googleapis.com/v1/projects/riego-automata:testIamPermissions {"permissions":["firebase.projects.get","firebasedatabase.instances.update","firebasehosting.sites.update"]}
